@@ -80,7 +80,8 @@ end
 [~,~,~,~,clusters]=wshedProcess(embeddingValues,desiredK); 
 
 %% With "Real" Data 
-load('C:\Users\Marcus\Downloads\100_3_14.mat')
+
+load('D:\Behaviour\SleepWake\Re_Runs\Clustered_Data\WT\Wake_Data\Full_Set\100_1_12.mat')
 
 % Sparse WaterShedding 
 results=struct();
@@ -93,16 +94,8 @@ for iCluster=1:size(GMModels{1}.mu,1)
     % Run gradient descent on each data point, we invert the PDF to find its maximum and scale by 1e-30 to bring the PDFs values into
     % a more typical range for fminunc
 %         [results(iCluster).x,results(iCluster).fval,results(iCluster).exitflag,results(iCluster).output,results(iCluster).grad]=...
-%            fminunc(@(x)-GMModels{1}.pdf(x)*1e-30,x0,options);
-     [results(iCluster).x,results(iCluster).fval,results(iCluster).exitflag,results(iCluster).output,results(iCluster).grad]=...
-         fminunc(@(x)-GMModels{1}.pdf(x),x0,options);
+%             fminunc(@(x)-GMModels{1}.pdf(x)*1e-30,x0,options);
+    [results(iCluster).x,results(iCluster).fval,results(iCluster).exitflag,results(iCluster).output,results(iCluster).grad]=...
+        fminunc(@(x)--GMModels{1}.pdf(x),x0,options);
 end
 
-% Figure 
-figure; hold on; 
-for i = 1:size(GMModels{1}.mu,1)
-    scatter(GMModels{1}.mu(i,1),GMModels{1}.mu(i,2),'k','filled');
-    scatter(results(i).x(1,1),results(i).x(1,2),'r'); 
-    plot([GMModels{1}.mu(i,1),results(i).x(1,1)],...
-        [GMModels{1}.mu(i,2),results(i).x(1,2)],'--r'); 
-end
