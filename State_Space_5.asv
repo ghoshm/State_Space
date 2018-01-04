@@ -100,7 +100,6 @@ toc
 knee_dim = 2; %[knee_dim] = knee_pt(explained); % Choose this many dimensions
 disp(horzcat('Reduced Wake data to ',num2str(knee_dim),' dimensions',...
     ' Explains ',num2str(sum(explained(1:knee_dim))),' % '));
-wake_cells_norm = X{1,1}; % store a z-scored version of wake_cells 
 X{1,1} = score(:,1:knee_dim);
 
 % Sleep
