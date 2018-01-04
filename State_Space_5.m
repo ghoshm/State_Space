@@ -10,6 +10,8 @@
 % Lbmap 
 %https://uk.mathworks.com/matlabcentral/fileexchange/17555-light-bartlein-color-maps
 
+% Knee_pt 
+%https://uk.mathworks.com/matlabcentral/fileexchange/35094-knee-point
 %% Load bout structure data (Parameter Extracted Data)
 tic
 % Load Data - using multiselect
@@ -96,14 +98,22 @@ toc
 
 [coeff,score,~,~,explained,~] = pca(X{1,1}); % pca
 % Note: By default Matlab Centers data for PCA by subtracting
-% the mean from each column
-knee_dim = 2; %[knee_dim] = knee_pt(explained); % Choose this many dimensions
+% the mean from each column (as the means are not quite zero this is
+% appropriate)
+[knee_dim] = knee_pt(explained); % Choose this many dimensions
 disp(horzcat('Reduced Wake data to ',num2str(knee_dim),' dimensions',...
     ' Explains ',num2str(sum(explained(1:knee_dim))),' % '));
 wake_cells_norm = X{1,1}; % store a z-scored version of wake_cells 
 X{1,1} = score(:,1:knee_dim);
 
 % Sleep
+% Handling NaN Values 
+    % Note that zscore cannot handle NaN values 
+    % Note that there are so few NaN values that giving them "fake" values 
+    % for the clustering won't make a difference 
+sleep_cells_nan_track = isnan(sleep_cells(:,3)); % store nan locations  
+sleep_cells(sleep_cells_nan_track,3) = 1; % set NaN's to 1 (the mode ~= 18% of data) 
+
 tic
 X{2,1} = []; % empty X
 % Z-score each fishes data
@@ -124,10 +134,10 @@ k_max = 1:20; % set values of k to try
 options = statset('MaxIter',1000); % Hard coded number of iterations
 
 % Save path for data
-pathname = 'D:\Behaviour\SleepWake\Re_Runs\Clustered_Data\New';
+save_pathname = 'D:\Behaviour\SleepWake\Re_Runs\Clustered_Data\New';
 
-% Pre-allocation - clusters x rep x downsample (k,r,d)
-for s = 1:2
+% Pre-allocation - {state} clusters x rep x downsample {s}(k,r,d)
+for s = 1:2 % for sleep/wake
     AIC{s,1} = zeros(size(k_max,2),reps,size(ds,2));
     BIC{s,1} = zeros(size(k_max,2),reps,size(ds,2));
     cluster_centroids{s,1} = cell(size(k_max,2),reps,size(ds,2));
@@ -244,7 +254,7 @@ for s = 1:2 % for wake/sleep
                 cluster_centroids{s,1}{k,r,d} = cluster_centroids{s,1}{k,r,d}(O,:);
                 
                 % Save Data
-                save(strcat(pathname,'\',num2str(s),'s_',num2str(ds(d)),'d_',num2str(r),'r_',num2str(k),'k','.mat'),...
+                save(strcat(save_pathname,'\',num2str(s),'s_',num2str(ds(d)),'d_',num2str(r),'r_',num2str(k),'k','.mat'),...
                     'idx','P','GMModels','time_sheet','AIC','BIC','cluster_centroids','sample','sample_tags');
                 
                 % Report progress
@@ -253,17 +263,17 @@ for s = 1:2 % for wake/sleep
                     ', k = ',num2str(k),', Time Taken = ',...
                     num2str(((time_sheet{s,1}(k,r,d)/60)/60)),' hours'));
             end
-            
         end
     end
-    
 end
 
-clear sample score_values score_zero rv O ...
+clear sample sample_tags score_values score_zero rv O ...
     GMModels idx P s d r k c;
 
 % Save Data
-save(strcat(pathname,'\Full_Set.mat'),'-v7.3');
+save(strcat(save_pathname,'\Full_Set.mat'),'-v7.3');
+
+%% Remember to Handle NaN Values in Sleep Cells! 
 
 %% Choice of Sample Size 
     % Re-worked from Down_Sampling_Code_V4
