@@ -12,6 +12,7 @@
 
 % Knee_pt 
 %https://uk.mathworks.com/matlabcentral/fileexchange/35094-knee-point
+
 %% Load bout structure data (Parameter Extracted Data)
 tic
 % Load Data - using multiselect
@@ -114,17 +115,20 @@ X{1,1} = score(:,1:knee_dim);
 sleep_cells_nan_track = isnan(sleep_cells(:,3)); % store nan locations  
 sleep_cells(sleep_cells_nan_track,3) = 1; % set NaN's to 1 (the mode ~= 18% of data) 
 
-tic
 X{2,1} = []; % empty X
-% Z-score each fishes data
-for f = 1:max(fish_tags{2,1}) % for each fish
-    X{2,1} = [X{2,1} ; zscore(sleep_cells(fish_tags{2,1} == f,3))];
-    if mod(f,100) == 0 % report every 100 fish 
-        disp(horzcat('Completed ',num2str(f),' fish of ',...
-            num2str(max(fish_tags{2,1}))));
-    end
-end
-toc
+X{2,1} = sleep_cells(:,3); 
+
+% tic
+% X{2,1} = []; % empty X
+% % Z-score each fishes data
+% for f = 1:max(fish_tags{2,1}) % for each fish
+%     X{2,1} = [X{2,1} ; zscore(sleep_cells(fish_tags{2,1} == f,3))];
+%     if mod(f,100) == 0 % report every 100 fish 
+%         disp(horzcat('Completed ',num2str(f),' fish of ',...
+%             num2str(max(fish_tags{2,1}))));
+%     end
+% end
+% toc
 
 % Hard Coded Parameters
 %ds = [0.01 0.1 1 5 10 15 25 50]; % set the number of data points to use for each clustering iteration
@@ -249,10 +253,6 @@ for s = 1:2 % for wake/sleep
                 % Store cluster centroids
                 cluster_centroids{s,1}{k,r,d} = GMModels{1}.mu;                
                 
-                % Sort cluster centroids by ascending PC1 
-                [~,O] = sort(cluster_centroids{s,1}{k,r,d}(:,1)); 
-                cluster_centroids{s,1}{k,r,d} = cluster_centroids{s,1}{k,r,d}(O,:);
-                
                 % Save Data
                 save(strcat(save_pathname,'\',num2str(s),'s_',num2str(ds(d)),'d_',num2str(r),'r_',num2str(k),'k','.mat'),...
                     'idx','P','GMModels','time_sheet','AIC','BIC','cluster_centroids','sample','sample_tags');
@@ -267,266 +267,260 @@ for s = 1:2 % for wake/sleep
     end
 end
 
-clear sample sample_tags score_values score_zero rv O ...
+clear sample sample_tags score_values score_zero rv ...
     GMModels idx P s d r k c;
 
 % Save Data
 save(strcat(save_pathname,'\Full_Set.mat'),'-v7.3');
 
-%% Remember to Handle NaN Values in Sleep Cells! 
-
 %% Choice of Sample Size 
     % Re-worked from Down_Sampling_Code_V4
     
-cmap_cluster{1,1} = lbmap(max(k_max),'RedBlue'); % generate a colormap for the clusters 
-
-% DS Data (k,r,d)
-figure; 
-for d = 1:size(ds,2) % for each downsampling
-    subplot(2,4,d); hold on; set(gca,'Fontsize',12); 
-    title(horzcat(num2str(ds(d)*100),'% SubSamples'),'Fontsize',18); 
-    
-    for r = 1:reps % for each repetition
-        scatter(cluster_centroids{1,r,d}(:,1),cluster_centroids{1,r,d}(:,2),72,...
-            cmap_cluster{1,1},'filled','MarkerFaceAlpha',1,'MarkerEdgeAlpha',1)
-    end
-    
-    xlabel('PC 1','Fontsize',16); 
-    ylabel('PC 2','Fontsize',16); 
-    axis([-3 9 -3 9]);
-    
-end
-
-% Comparison 
-cluster_centroids_comp = nan(size(ds,2),max(k_max),'single'); % ds x k 
-for d = 1:size(ds,2) % for each downsampling
-    for c = 1:max(k_max) % for each cluster
-        scrap = []; 
-        for r = 1:reps % for each repetition
-            scrap = [scrap ; cluster_centroids{1,r,d}(c,:)]; 
-        end
-        cluster_centroids_comp(d,c) = sum(pdist(scrap))/2;
-    end
-end
-
-figure; subplot(2,1,1); set(gca,'Fontsize',12); hold on; 
-title('Variation in Centroid Position','Fontsize',18); 
-plot(1:size(ds,2),sum(cluster_centroids_comp,2),'color',cmap(1,:),'linewidth',3)
-ylabel('Total Distance (Euclidean)','Fontsize',16); 
-xticklabels({num2str(ds'*100)});
-xlabel('Percentage of Data Sampled','Fontsize',16); 
-
-% Time Figure 
-ax = subplot(2,1,2); hold on; ax.FontSize = 12; 
-title('Time Taken for each Subsample','Fontsize',18);
-spread_cols = plotSpread(squeeze(time_sheet)/60,'showMM',4,'distributionColors',cmap_2(2,:)); 
-spread_cols{2}(1).LineWidth = 3; spread_cols{2}(2).LineWidth = 3; % Change marker width 
-spread_cols{2}(1).Color = cmap_2(1,:); spread_cols{2}(2).Color = cmap_2(1,:); 
-xticklabels({num2str(ds'*100)});
-xlabel('Percentage of Data Sampled','Fontsize',16); 
-ylabel('Time Taken (minutes)','Fontsize',16); 
+% cmap_cluster{1,1} = lbmap(max(k_max),'RedBlue'); % generate a colormap for the clusters 
+% 
+% % DS Data (k,r,d)
+% figure; 
+% for d = 1:size(ds,2) % for each downsampling
+%     subplot(2,4,d); hold on; set(gca,'Fontsize',12); 
+%     title(horzcat(num2str(ds(d)*100),'% SubSamples'),'Fontsize',18); 
+%     
+%     for r = 1:reps % for each repetition
+%         scatter(cluster_centroids{1,r,d}(:,1),cluster_centroids{1,r,d}(:,2),72,...
+%             cmap_cluster{1,1},'filled','MarkerFaceAlpha',1,'MarkerEdgeAlpha',1)
+%     end
+%     
+%     xlabel('PC 1','Fontsize',16); 
+%     ylabel('PC 2','Fontsize',16); 
+%     axis([-3 9 -3 9]);
+%     
+% end
+% 
+% % Comparison 
+% cluster_centroids_comp = nan(size(ds,2),max(k_max),'single'); % ds x k 
+% for d = 1:size(ds,2) % for each downsampling
+%     for c = 1:max(k_max) % for each cluster
+%         scrap = []; 
+%         for r = 1:reps % for each repetition
+%             scrap = [scrap ; cluster_centroids{1,r,d}(c,:)]; 
+%         end
+%         cluster_centroids_comp(d,c) = sum(pdist(scrap))/2;
+%     end
+% end
+% 
+% figure; subplot(2,1,1); set(gca,'Fontsize',12); hold on; 
+% title('Variation in Centroid Position','Fontsize',18); 
+% plot(1:size(ds,2),sum(cluster_centroids_comp,2),'color',cmap(1,:),'linewidth',3)
+% ylabel('Total Distance (Euclidean)','Fontsize',16); 
+% xticklabels({num2str(ds'*100)});
+% xlabel('Percentage of Data Sampled','Fontsize',16); 
+% 
+% % Time Figure 
+% ax = subplot(2,1,2); hold on; ax.FontSize = 12; 
+% title('Time Taken for each Subsample','Fontsize',18);
+% spread_cols = plotSpread(squeeze(time_sheet)/60,'showMM',4,'distributionColors',cmap_2(2,:)); 
+% spread_cols{2}(1).LineWidth = 3; spread_cols{2}(2).LineWidth = 3; % Change marker width 
+% spread_cols{2}(1).Color = cmap_2(1,:); spread_cols{2}(2).Color = cmap_2(1,:); 
+% xticklabels({num2str(ds'*100)});
+% xlabel('Percentage of Data Sampled','Fontsize',16); 
+% ylabel('Time Taken (minutes)','Fontsize',16); 
 
 %% Choice of Number of Clusters (Can Alternatively Load Data from Legion Here)  
 
 % Load data
-Wake = load('F:\Behaviour\SleepWake\Re_Runs\Clustered_Data\WT\Wake_Data\Auto\Wake_Data.mat');
-pause(30); % Helps with memory 
-Sleep = load('F:\Behaviour\SleepWake\Re_Runs\Clustered_Data\WT\Sleep_Data\Auto\Sleep_Data.mat');
-pause(30); % Helps with memory 
-load('F:\Behaviour\SleepWake\Re_Runs\Clustered_Data\WT\Wake_Data\Auto\Wake_Data.mat');
+load('D:\Behaviour\SleepWake\Re_Runs\Clustered_Data\New\Z_Score_Wake\Full_Set.mat'); 
+strings{1,1} = 'Active'; strings{2,1} = 'Inactive'; % name tags 
 
 % Info Criteria Figure 
 figure; 
-ax(1) = subplot(1,2,1); hold on; title('Active');
-plot(Wake.AIC,'linewidth',3); 
-plot(Wake.BIC,'linewidth',3); 
+for s = 1:2 % for active & inactive
+    ax(s) = subplot(1,2,s); set(gca,'FontName','Calibri'); hold on; title(strings{s,1});
+    plot(BIC{s,1},'linewidth',3);
+    box off; set(gca,'Layer','top'); set(gca,'Fontsize',32);
+    if s == 2
+        [~,icons,plots,~] = legend('BIC','Location','northeast');
+        legend('boxoff');
+        set(icons(1),'Fontsize',26) ; set(plots,'LineWidth',3);
+    end
+    xlabel('Number of Clusters','Fontsize',26);
+    ylabel('Criteria Value','Fontsize',26);
+end
 
-box off; set(gca, 'Layer','top'); set(gca,'Fontsize',24);
-[~,icons,plots,~] = legend('AIC','BIC','Location','northeast');
-legend('boxoff'); 
-set(icons(1:2),'Fontsize',20) ; set(plots,'LineWidth',3);
-xlabel('Number of Clusters','Fontsize',20);
-ylabel('Criteria Value','Fontsize',20);
-
-ax(2) = subplot(1,2,2); hold on; title('Inactive'); 
-plot(Sleep.AIC,'linewidth',3); 
-plot(Sleep.BIC,'linewidth',3);
-
-box off; set(gca, 'Layer','top'); set(gca,'Fontsize',24);
-[~,icons,plots,~] = legend('AIC','BIC','Location','northeast');
-legend('boxoff'); 
-set(icons(1:2),'Fontsize',20) ; set(plots,'LineWidth',3);
-xlabel('Number of Clusters','Fontsize',20);
-ylabel('Criteria Value','Fontsize',20);
-
-numComp = [14 6]; % Choose wake and sleep numbers of clusters
-cmap_cluster{1,1} = haxby(numComp(1)); % generate a colormap for the clusters 
-cmap_cluster{2,1} = cool(numComp(2)); % generate a colormap for the clusters 
+% Choice of number of clusters 
+numComp = [10 6]; % Choose active & inactive numbers of clusters
+scrap = lbmap(sum(numComp),'RedBlue'); % Color Scheme
+cmap_cluster{1,1} = scrap(1:numComp(1),:); % generate a colormap for the clusters 
+cmap_cluster{2,1} = scrap(numComp(1)+1:end,:); % generate a colormap for the clusters 
 
 % Add to Figure 
-subplot(ax(1))
-scatter(numComp(1),Wake.AIC(numComp(1)),72,'k','filled'); 
-subplot(ax(2)); 
-scatter(numComp(2),Sleep.AIC(numComp(2)),72,'k','filled'); 
+for s = 1:2
+    subplot(ax(s)); scatter(numComp(s),BIC{s,1}(numComp(s)),72,'k','filled'); 
+end 
 
-%% Bout Data Figures 
-    % Should sort by something (e.g. length)
-fps = 25; 
+clear ax s scrap; 
 
-figure; 
-imagesc(zscore(wake_cells(:,3:end)),[-3 3])
-colormap autumn; 
-c = colorbar; c.Label.String = 'Z-Score'; 
-set(gca,'XTickLabels',parameters(1:6))
-set(gca,'Fontsize',18)
-xlabel('Parameters','Fontsize',32) 
-ylabel('Bouts','Fontsize',32) 
-title('Active Bout Data','Fontsize',32)
+% Load Data 
+Wake = load(horzcat('D:\Behaviour\SleepWake\Re_Runs\Clustered_Data\New\Z_Score_Wake\1s_2000000d_1r_',...
+    num2str(numComp(1)),'k.mat')); 
+Sleep = load(horzcat('D:\Behaviour\SleepWake\Re_Runs\Clustered_Data\New\Z_Score_Wake\2s_2000000d_1r_',...
+    num2str(numComp(2)),'k.mat')); 
 
-figure; 
-imagesc(sleep_cells(:,3)/fps,[0 3]); 
-colormap cool; 
-c = colorbar; c.Label.String = 'Time (seconds)';
-set(gca,'XTick',1); 
-set(gca,'XTickLabels',parameters{10})
-set(gca,'Fontsize',18)
-xlabel('Parameters','Fontsize',32) 
-ylabel('Bouts','Fontsize',32) 
-title('Inactive Bout Data','Fontsize',32)
+% Remove NaN Values from Sleep 
+sleep_cells(sleep_cells_nan_track,3) = NaN; 
+Sleep.idx{1}(sleep_cells_nan_track,1) = NaN; 
+Sleep.P{1}(sleep_cells_nan_track,1) = NaN; 
 
-clear c fps 
+% Merge Variables for ease of Looping 
+idx{1,1} = Wake.idx{1,1}; idx{2,1} = Sleep.idx{1};
+P{1,1} = Wake.P{1,1}; P{2,1} = Sleep.P{1}; 
+cells{1,1} = wake_cells; cells{2,1} = sleep_cells; 
+
+%% Sorting Clusters by Mean Length 
+             
+for s = 1:2 % for active & inactive
+    mean_cluster_length = nan(1,numComp(s),'single'); % pre-allocate
+    for c = 1:numComp(s) % For each cluster
+        mean_cluster_length(c) = nanmean(cells{s,1}(idx{s,1}==c,3));
+        % Calculate max bout length
+    end
+    
+    [~,O] = sort(mean_cluster_length); % Sort by increasing bout length
+    
+    idx_numComp_sorted{s,1} = nan(size(cells{s,1},1),1,'single'); % Pre-allocate
+    
+    for c = 1:numComp(s)  % For each cluster
+        idx_numComp_sorted{s,1}(idx{s,1} == O(c),:) = c;
+        % Re-assign cluster numbers
+    end
+    
+    clear mean_cluster_length s c O;
+end
+
+%% Cluster Parameters - Fits 
+tic
+parameter_dists = cell(2,1); 
+
+for s = 1:2 % for active & inactive
+    for p = 3:size(cells{s,1},2) % for each parameter
+        for k = 1:numComp(s) % for each cluster
+            clear pd;
+            pd = fitdist(cells{s,1}(idx_numComp_sorted{s,1}==k,p),'kernel','Width',1); % Fit
+            parameter_dists{s,p-2}(k,:) = pdf(pd,min(cells{s,1}(:,p)):max(cells{s,1}(:,p)));
+        end
+    end
+end
+toc
+
+%% Cluster Parameters - Fits Figure 
+figure;
+counter = 1; % start a counter 
+for s = 1:2 % for active & inactive
+    for p = 1:size(cells{s,1},2) - 2 % For each parameter
+        subplot(2,4,counter); hold on;
+        box off; set(gca, 'Layer','top'); set(gca,'Fontsize',12); set(gca,'FontName','Calibri'); % Set Font
+        if s ~= 2
+            title(parameters{1}{p}); % Add title
+        else
+            title(parameters{1}{10}); % Add title   
+        end
+        
+        crop = size(parameter_dists{s,p},2); 
+        
+        for k = 1:numComp(s) % for each cluster
+            plot((1:crop)/unit_conversion{1}(s,p),parameter_dists{s,p}(k,:),'color',cmap_cluster{s,1}(k,:),'linewidth',3)
+        end
+        
+        set(gca,'XTick',...
+            [1/unit_conversion{1}(s,p), 1/unit_conversion{1}(s,p)*10,...
+            crop/unit_conversion{1}(s,p)]); % set x tick labels
+        
+        axis([1/unit_conversion{1}(s,p) crop/unit_conversion{1}(s,p) ...
+            min(min(parameter_dists{s,p})) max(max(parameter_dists{s,p}))]); % Set axis limits
+        
+        % Set decimal places depending on units
+        if unit_conversion{1}(s,p) > 1
+            xtickformat('%.2f');
+        else
+            xtickformat('%.0f');
+        end
+        
+        set(gca,'XScale','log'); % set log axis
+        xlabel(units{1}(p),'Fontsize',12); % X labels
+        ylabel('Probability Density','Fontsize',12); % Y label
+        
+        counter = counter + 1;
+        
+        % Legend Plot 
+        if counter == 8 
+            subplot(2,4,counter); hold on;
+            box off; set(gca, 'Layer','top'); set(gca,'Fontsize',12); set(gca,'FontName','Calibri'); % Set Font
+            title('Legend'); 
+            
+            for s = 1:2 % for active & inactive 
+                for k = 1:numComp(s) % for each cluster 
+                    scatter(k,mod(s,2),300,...
+                        'markerfacecolor',cmap_cluster{s,1}(k,:),...
+                        'markeredgecolor',cmap_cluster{s,1}(k,:));
+                end 
+            end 
+            
+            axis([0 max(numComp)+1 -1 2]);
+            xlabel('Cluster Number','Fontsize',12); % X labels
+            set(gca,'YTick',[0 1]); 
+            set(gca,'YTickLabels',{'Inactive','Active'},'Fontsize',12);
+        end 
+        
+    end
+end
+
 
 %% Posterior Probabilities 
-p_assign_dist{1,1} = nan(size(Wake.idx{numComp(1),1},1),1,'single'); % pre-allocate 
-p_assign_dist{2,1} = nan(size(Sleep.idx{numComp(1),1},1),1,'single'); % pre-allocate 
 
-% Wake 
-for o = 1:size(p_assign_dist{1,1},1) % For each observation
-    p_assign_dist{1,1}(o,1) = single(Wake.P{numComp(1),1}...
-        (o,Wake.idx{numComp(1),1}(o,1))); % Pull posterior probabilities
-    % For each cluster assignment
-end
+% Figure 
+clear pd; 
+pd = fitdist(P{1,1},'Kernel','Width',0.05); % Fit distribution 
+p_dist{1,1} = pdf(pd,0:0.05:1); clear pd; % Save as pdf  
+pd = fitdist(P{2,1},'Kernel','Width',0.1); % Fit distribution
+p_dist{2,1} = pdf(pd,0:0.05:1); % Save as pdf 
 
-% Sleep 
-for o = 1:size(p_assign_dist{2,1},1) % For each observation
-    p_assign_dist{2,1}(o,1) = single(Sleep.P{numComp(2),1}...
-        (o,Sleep.idx{numComp(2),1}(o,1))); % Pull posterior probabilities
-    % For each cluster assignment
-end
-
-% Posterior Probabilities Figure 
-pd = fitdist(p_assign_dist{1,1},'Kernel','Width',0.1); % Fit distribution 
-p_assign_dist{1,2} = pdf(pd,0:0.1:1); clear pd; % Save as pdf  
-pd = fitdist(p_assign_dist{2,1},'Kernel','Width',0.1); % Fit distribution
-p_assign_dist{2,2} = pdf(pd,0:0.1:1); % Save as pdf 
-
-figure; hold on; title('Posterior Probabilities'); 
-plot(0:0.1:1,p_assign_dist{1,2},'linewidth',3)
-plot(0:0.1:1,p_assign_dist{2,2},'linewidth',3)
+figure; hold on; set(gca,'FontName','Calibri'); title('Posterior Probabilities'); 
+plot(0:0.05:1,p_dist{1,1},'color',cmap_cluster{1,1}(1,:),'linewidth',3)
+plot(0:0.05:1,p_dist{2,1},'color',cmap_cluster{2,1}(1,:),'linewidth',3)
 
 box off; set(gca, 'Layer','top'); set(gca,'Fontsize',32);
 [~,icons,plots,~] = legend('Active Bouts','Inactive Bouts','Location','northwest');
 legend('boxoff'); 
-set(icons(1:2),'Fontsize',28) ; set(plots,'LineWidth',3);
-xlabel('Posterior Probability','Fontsize',28);
-ylabel('Probability Density','Fontsize',28);
+set(icons(1:2),'Fontsize',26) ; set(plots,'LineWidth',3);
+xlabel('Posterior Probability','Fontsize',26);
+ylabel('Probability Density','Fontsize',26);
 clear ax s o pd icons plots; 
 
-% Clear uncessary data 
-Wake.idx = Wake.idx{numComp(1),1}; 
-Wake.nlogl = Wake.nlogl{numComp(1),1}; 
-Wake.P = Wake.P{numComp(1),1}; 
-
-Sleep.idx = Sleep.idx{numComp(2),1}; 
-Sleep.nlogl = Sleep.nlogl{numComp(2),1}; 
-Sleep.P = Sleep.P{numComp(2),1}; 
-
-
-%% Sorting Clusters 
-    % Note that if clustering using State_Space_5 - the clusters are
-    % already ordered by PC1 - so no need to re-order 
-    
-% Wake 
-% PC1 - seems to use length 
-mean_cluster_length = nan(1,numComp(1),'single'); % pre-allocate
-for c = 1:numComp(1) % For each cluster 
-    mean_cluster_length(c) = max(wake_cells(Wake.idx==c,3));
-        % Calculate max bout length 
-end 
-
-[~,O] = sort(mean_cluster_length); % Sort by increasing bout length 
-
-idx_numComp_sorted{1,1} = nan(size(Wake.idx,1),1,'single'); % Pre-allocate 
-
-for c = 1:numComp(1)  % For each cluster
-    idx_numComp_sorted{1,1}(Wake.idx == O(c),:) = c; 
-        % Re-assign cluster numbers 
-end 
-
-clear mean_cluster_length c O; 
-
-% Sleep 
-mean_cluster_length = nan(1,numComp(2),'single'); % pre-allocate
-for c = 1:numComp(2) % For each cluster 
-    mean_cluster_length(c) = max(sleep_cells(Sleep.idx==c,3));
-        % Calculate max bout length 
-end 
-
-[~,O] = sort(mean_cluster_length); % Sort by increasing bout length 
-
-idx_numComp_sorted{2,1} = nan(size(Sleep.idx,1),1,'single'); % Pre-allocate 
-
-for c = 1:numComp(2)  % For each cluster
-    idx_numComp_sorted{2,1}(Sleep.idx == O(c),:) = c; 
-        % Re-assign cluster numbers 
-end 
-
-clear mean_cluster_length c O; 
-
 %% Mean "Goodness" of fit for each cluster
-p_assign_dist_mean{1,1} = nan(max(fish_tags{1,1}),numComp(1),'single'); % pre-allocate  
-p_assign_dist_mean{2,1} = nan(max(fish_tags{2,1}),numComp(2),'single'); % pre-allocate  
-    % fish x clusters 
-
-for f = 1:max(fish_tags{1,1}) % For each fish  
-    % Wake 
-    for c = 1:numComp(1) % For each active cluster 
-        p_assign_dist_mean{1,1}(f,c) = nanmean(p_assign_dist{1,1}...
-            (idx_numComp_sorted{1,1} == c & fish_tags{1,1} == f));  
-    end 
-    % Sleep 
-    for c = 1:numComp(2) % For each inactive cluster 
-        p_assign_dist_mean{2,1}(f,c) = nanmean(p_assign_dist{2,1}...
-            (idx_numComp_sorted{2,1} == c & fish_tags{2,1} == f));  
-    end 
-end 
-
-% Active Figure 
-figure; hold on; % Figure
-for c = 1:numComp(1) % For each active cluster
-    subplot(3,5,c); title(horzcat('Active Cluster ',num2str(c)));
-    for e = 1:max(experiment_tags{1,1}) % For each experiment
-        spread_cols = plotSpread(p_assign_dist_mean{1,1}(i_experiment_tags == e,c),...
-            'distributionIdx',i_group_tags(i_experiment_tags == e),...
-            'distributionColors',cmap+(1-cmap)*(1-(1/e^.5)),'showMM',2);
-        spread_cols{2}.LineWidth = 3; % Change marker width
+p_assign_dist_mean{1,1} = nan(max(fish_tags{1,1}),numComp(1),'single'); % fish x clusters  
+p_assign_dist_mean{2,1} = nan(max(fish_tags{2,1}),numComp(2),'single'); % fish x clusters  
+    
+for s = 1:2 % active & inactive
+    for f = 1:max(fish_tags{1,1}) % For each fish
+        for c = 1:numComp(s) % For each cluster
+            p_assign_dist_mean{1,1}(f,c) = nanmean(P{s,1}...
+                (idx_numComp_sorted{s,1} == c & fish_tags{s,1} == f));
+        end
     end
-    ylabel('Posterior Probability','Fontsize',12);
-    set(gca,'xticklabel',geno_list.colheaders,'Fontsize',12); % Name each group
 end
 
-% Inactive Figure 
+% Figure 
 figure; hold on; % Figure
-for c = 1:numComp(2) % For each inactive cluster
-    subplot(2,3,c); title(horzcat('Inactive Cluster ',num2str(c)));
-    for e = 1:max(experiment_tags{2,1}) % For each experiment
-        spread_cols = plotSpread(p_assign_dist_mean{2,1}(i_experiment_tags == e,c),...
-            'distributionIdx',i_group_tags(i_experiment_tags == e),...
-            'distributionColors',cmap+(1-cmap)*(1-(1/e^.5)),'showMM',2);
-        spread_cols{2}.LineWidth = 3; % Change marker width
+for s = 1:2 % active & inactive
+    for c = 1:numComp(s) % For each active cluster
+        subplot(3,6,c); title(horzcat('Active Cluster ',num2str(c)));
+        for e = 1:max(experiment_tags{1,1}) % For each experiment
+            spread_cols = plotSpread(p_assign_dist_mean{1,1}(i_experiment_tags == e,c),...
+                'distributionIdx',i_group_tags(i_experiment_tags == e),...
+                'distributionColors',cmap+(1-cmap)*(1-(1/e^.5)),'showMM',2);
+            spread_cols{2}.LineWidth = 3; % Change marker width
+        end
+        ylabel('Posterior Probability','Fontsize',12);
+        set(gca,'xticklabel',geno_list.colheaders,'Fontsize',12); % Name each group
     end
-    ylabel('Posterior Probability','Fontsize',12);
-    set(gca,'xticklabel',geno_list.colheaders,'Fontsize',12); % Name each group
 end
 
 % Stats 
@@ -807,54 +801,60 @@ end
 clear anova_experiment anova_group anova_time anova_development ...
     t d c scrap 
 
-%% Cluster Parameters
-
-% Active 
-figure; hold on; 
-for p = 1:6 % For each parameter 
-    subplot(2,3,p); title(parameters{p}); 
-    plotSpread(wake_cells(:,p+2)/unit_conversion(1,p),'distributionIdx',...
-        idx_numComp_sorted{1,1},'distributionColors',cmap_cluster{1,1}); 
-    set(gca,'xtick',[]); 
-    xlabel('Clusters','Fontsize',12); 
-    ylabel(units{p},'Fontsize',12); 
-end 
-
-% Inactive - scatter  
-figure; hold on; 
-for p = 1 % For each parameter 
-    title(parameters{p}); 
-    plotSpread(log10(sleep_cells(:,p+2)/unit_conversion(1,p)),'distributionIdx',...
-        idx_numComp_sorted{2,1},'distributionColors',cmap_cluster{2,1}); 
-    set(gca,'xtick',[]); 
-    xlabel('Clusters','Fontsize',12); 
-    ylabel(units{p},'Fontsize',12); 
-end
-
 %% Scattering bouts in PCA Space
 % Active 
     % Should try coloring each cluster using posterior probability bins
 figure; hold on; box off;  
 for c = numComp(1):-1:1  % For each cluster 
-    scatter((score(idx_numComp_sorted{1,1}==c,1)),score(idx_numComp_sorted{1,1}==c,2),...
+    scatter((score(idx_numComp_sorted{1,1}==c,1)),score(idx_numComp_sorted{1,1}==c,2),'.',...
         'markerfacecolor',cmap_cluster{1,1}(c,:),...
         'markeredgecolor',cmap_cluster{1,1}(c,:));
-    xlabel('PC1','Fontsize',32); 
-    ylabel('PC2','Fontsize',32); 
 end 
-set(gca,'Fontsize',18); 
+xlabel('PC1','Fontsize',32);
+ylabel('PC2','Fontsize',32);
+set(gca,'Fontsize',18);
 
 % Add in ScatterHist to show the Gaussians 
+figure; 
+scatterhist(score(:,1),score(:,2),'group',idx_numComp_sorted{1,1},...
+    'kernel','on','color',cmap_cluster{1,1},'legend','on',...
+    'linewidth',3); 
 
 %% Line Plots of each clusters feature 
-scrap = zscore(wake_cells(:,3:end)); 
+clear scrap; scrap = zscore(wake_cells(:,3:end)); 
 figure; hold on; 
 for c = numComp(1):-1:1 % For each cluster 
     plot(nanmean(scrap(idx_numComp_sorted{1,1}==c,:)),'color',cmap_cluster{1,1}(c,:),'linewidth',3);
     set(gca,'Xtick',1:6);
     set(gca,'Fontsize',18); 
-    set(gca,'XTickLabels',parameters(1:6),'Fontsize',12); 
+    set(gca,'XTickLabels',parameters{1}(1:6),'Fontsize',12); 
     xlabel('Parameters','Fontsize',32); 
     ylabel('Z Score','Fontsize',32); 
 end 
 clear scrap; 
+
+%% Old Bout Data Figures 
+    % Should sort by something (e.g. length)
+
+figure; 
+imagesc(zscore(wake_cells(:,3:end)),[-3 3])
+colormap autumn; 
+c = colorbar; c.Label.String = 'Z-Score'; 
+set(gca,'XTickLabels',parameters(1:6))
+set(gca,'Fontsize',18)
+xlabel('Parameters','Fontsize',32) 
+ylabel('Bouts','Fontsize',32) 
+title('Active Bout Data','Fontsize',32)
+
+figure; 
+imagesc(sleep_cells(:,3)/fps,[0 3]); 
+colormap cool; 
+c = colorbar; c.Label.String = 'Time (seconds)';
+set(gca,'XTick',1); 
+set(gca,'XTickLabels',parameters{10})
+set(gca,'Fontsize',18)
+xlabel('Parameters','Fontsize',32) 
+ylabel('Bouts','Fontsize',32) 
+title('Inactive Bout Data','Fontsize',32)
+
+clear c fps 
