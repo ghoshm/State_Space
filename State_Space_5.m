@@ -324,7 +324,7 @@ save(strcat(save_pathname,'\Full_Set.mat'),'-v7.3');
 % xlabel('Percentage of Data Sampled','Fontsize',16); 
 % ylabel('Time Taken (minutes)','Fontsize',16); 
 
-%% Choice of Number of Clusters (Can Alternatively Load Data from Legion Here)  
+%% Choice of Number of Clusters & Settings  
 
 % Load data
 load('D:\Behaviour\SleepWake\Re_Runs\Clustered_Data\New\Z_Score_Wake\Full_Set.mat'); 
@@ -373,6 +373,35 @@ Sleep.P{1}(sleep_cells_nan_track,1) = NaN;
 idx{1,1} = Wake.idx{1,1}; idx{2,1} = Sleep.idx{1};
 P{1,1} = Wake.P{1,1}; P{2,1} = Sleep.P{1}; 
 cells{1,1} = wake_cells; cells{2,1} = sleep_cells; 
+
+% Hard Coded Grouping Variable 
+experiment_reps = [1 1 1 2 2 3 3 4 5]; 
+
+% Adjust colours 
+for e = 1:size(cmap,2) % for each experiment
+    if max(i_group_tags(i_experiment_tags==e)) == 1
+        cmap{e}(1,:) = [135 206 250]/255; % light sky blue
+        cmap_2{e}(1,:) = cmap{e};
+        cmap_2{e}(2,:) = [25 25 112]/255; % midnight blue
+    else
+        cmap_2{e} = flip(cmap_2{e}); % flip cmap
+        for c = 1:2:size(cmap_2{e},1)
+            cmap_2{e}([c c+1],:) = cmap_2{e}([c+1 c],:); % swap the colors around
+        end
+        cmap{e} = cmap_2{e}(1:2:size(cmap_2{e},1),:); % Extract main colors
+    end
+end
+
+% Adjust time windows 
+for e = 1:size(time_window,2) % for each experiment 
+    if experiment_reps(e) < 4 
+       time_window{e} = [3 6];
+       days{e} = [2 3]; nights{e} = [2 3]; 
+    else
+       time_window{e} = [1 2];
+       days{e} = 1;
+    end 
+end 
 
 %% Sorting Clusters by Mean Length 
              
@@ -494,233 +523,106 @@ xlabel('Posterior Probability','Fontsize',26);
 ylabel('Probability Density','Fontsize',26);
 clear ax s o pd icons plots; 
 
-%% Mean "Goodness" of fit for each cluster
-
-% 180108 - Start Here, Should instead work with distributions? 
-
-p_assign_dist_mean{1,1} = nan(max(fish_tags{1,1}),numComp(1),'single'); % fish x clusters  
-p_assign_dist_mean{2,1} = nan(max(fish_tags{2,1}),numComp(2),'single'); % fish x clusters  
-    
-tic
-for s = 1:2 % active & inactive
-    for f = 1:max(fish_tags{s,1}) % For each fish
-        for c = 1:numComp(s) % For each cluster
-            p_assign_dist_mean{s,1}(f,c) = nanmean(P{s,1}...
-                (idx_numComp_sorted{s,1} == c & fish_tags{s,1} == f));
-        end
-    end
-end
-toc 
-
-% Figure 
-figure; hold on; % Figure
-for s = 1:2 % active & inactive
-    for c = 1:numComp(s) % For each active cluster
-        subplot(3,6,c); title(horzcat('Active Cluster ',num2str(c)));
-        for e = 1:max(experiment_tags{1,1}) % For each experiment
-            spread_cols = plotSpread(p_assign_dist_mean{1,1}(i_experiment_tags == e,c),...
-                'distributionIdx',i_group_tags(i_experiment_tags == e),...
-                'distributionColors',cmap+(1-cmap)*(1-(1/e^.5)),'showMM',2);
-            spread_cols{2}.LineWidth = 3; % Change marker width
-        end
-        ylabel('Posterior Probability','Fontsize',12);
-        set(gca,'xticklabel',geno_list.colheaders,'Fontsize',12); % Name each group
-    end
-end
-
-% Stats 
-% Active 
-for c = 1:numComp(1) % For each active cluster
-    if max(experiment_tags{1,1}) > 1 % With experiment tags 
-        [twa.gf.active.p(1:3,c),~,twa.gf.active.stats{c}] = anovan...
-            (p_assign_dist_mean{1,1}(:,c),{i_group_tags,i_experiment_tags},...
-            'display','off','model','full');
-    else % Without experiment tags 
-        [twa.gf.active.p(1,c),~,twa.gf.active.stats{c}] = anovan...
-            (p_assign_dist_mean{1,1}(:,c),{i_group_tags},...
-            'display','off','model','full'); % Try without
-    end
-end
-
-% Inactive 
-for c = 1:numComp(2) % For each cluster
-    if max(experiment_tags{2,1}) > 1 % With experiment tags 
-        [twa.gf.inactive.p(1:3,c),~,twa.gf.inactive.stats{c}] = anovan...
-            (p_assign_dist_mean{2,1}(:,c),{i_group_tags,i_experiment_tags},...
-            'display','off','model','full');
-    else % Without experiment tags 
-        [twa.gf.inactive.p(1,c),~,twa.gf.inactive.stats{c}] = anovan...
-            (p_assign_dist_mean{2,1}(:,c),{i_group_tags},...
-            'display','off','model','full'); % Try without
-    end
-end
-
-clear c e f spread_cols
 
 %% Bout Proportions  
+tic
 bout_proportions{1,1} = nan(max(fish_tags{1,1}),numComp(1),max(parameter_indicies{1,1}),...
     'single'); % fish x clusters x time windows 
 bout_proportions{2,1} = nan(max(fish_tags{2,1}),numComp(2),max(parameter_indicies{2,1}),...
     'single'); % fish x clusters x time windows 
 
 % Active
-for f = 1:max(fish_tags{1,1}) % For each fish 
-    for c = 1:numComp(1) % For each active bout type 
-        for t = 1:max(parameter_indicies{1,1}) % For each time window 
-            bout_proportions{1,1}(f,c,t) = size(find(fish_tags{1,1} == f & ...
-                idx_numComp_sorted{1,1} == c & parameter_indicies{1,1} == t),1)/...
-                    size(find(fish_tags{1,1} == f & parameter_indicies{1,1} == t),1); 
-        end 
-    end 
-    disp(horzcat('Calculated Active Bout Proportions for fish ',num2str(f),...
-        ' of ',num2str(max(fish_tags{1,1})))); 
-end 
-
-% Inactive 
-for f = 1:max(fish_tags{2,1}) % For each fish 
-    for c = 1:numComp(2) % For each inactive bout type 
-        for t = 1:max(parameter_indicies{2,1}) % For each time window 
-            bout_proportions{2,1}(f,c,t) = size(find(fish_tags{2,1} == f & ...
-                idx_numComp_sorted{2,1} == c & parameter_indicies{2,1} == t),1)/...
-                    size(find(fish_tags{2,1} == f & parameter_indicies{2,1} == t),1); 
-        end 
-    end 
-    disp(horzcat('Calculated Inactive Bout Proportions for fish ',num2str(f),...
-        ' of ',num2str(max(fish_tags{2,1})))); 
-end 
-
-clear f c t 
-
-%% Bout Proportions Figures 
-% Active 
-figure; hold on;
-for c = 1:numComp(1) % for each cluster
-    subplot(3,5,c); title(horzcat('Active Cluster ',num2str(c))); hold on;
-    counter = 1; clear scrap; % subplot
-    for e = 1:max(i_experiment_tags) % for each experiment
-        for g = 1:max(i_group_tags) % for each group
-            legend_lines(g) = errorbar(nanmean(permute(bout_proportions{1,1}(i_group_tags == g &...
-                i_experiment_tags == e,c,time_window(1):time_window(2)),[1 3 2])),...
-                nanstd(permute(bout_proportions{1,1}(i_group_tags == g &...
-                i_experiment_tags == e,c,time_window(1):time_window(2)),[1 3 2]))/...
-                sqrt(size(permute(bout_proportions{1,1}(i_group_tags == g &...
-                i_experiment_tags == e,c,time_window(1):time_window(2)),[1 3 2]),1)),...
-                'color',cmap(g,:)+(1-cmap(g,:))*(1-(1/e^.5)),'linewidth',3);
-            
-            if e == 1 % For the first experiment
-                legend_cell{g} = horzcat(geno_list.colheaders{g},', n = (',...
-                    num2str(size(find(i_group_tags == g),1)),')');
+for s = 1:2 % for active & inactive  
+    for f = 1:max(fish_tags{s,1}) % For each fish
+        for c = 1:numComp(s) % For each active bout type
+            for t = 1:max(parameter_indicies{s,1}(fish_tags{s,1}==f)) % For each time window that fish uses 
+                bout_proportions{s,1}(f,c,t) = sum(fish_tags{s,1}==f & idx_numComp_sorted{s,1}==c ...
+                    & parameter_indicies{s,1}==t)/...
+                    sum(fish_tags{s,1}==f & parameter_indicies{s,1} == t);
             end
-            
-            scrap(1,counter) = max(nanmean(permute(bout_proportions{1,1}(i_group_tags == g &...
-                i_experiment_tags == e,c,time_window(1):time_window(2)),[1 3 2])) +...
-                nanstd(permute(bout_proportions{1,1}(i_group_tags == g &...
-                i_experiment_tags == e,c,time_window(1):time_window(2)),[1 3 2]))/...
-                sqrt(size(permute(bout_proportions{1,1}(i_group_tags == g &...
-                i_experiment_tags == e,c,time_window(1):time_window(2)),[1 3 2]),1)));
-            scrap(2,counter) = min(nanmean(permute(bout_proportions{1,1}(i_group_tags == g &...
-                i_experiment_tags == e,c,time_window(1):time_window(2)),[1 3 2])) -...
-                nanstd(permute(bout_proportions{1,1}(i_group_tags == g &...
-                i_experiment_tags == e,c,time_window(1):time_window(2)),[1 3 2]))/...
-                sqrt(size(permute(bout_proportions{1,1}(i_group_tags == g &...
-                i_experiment_tags == e,c,time_window(1):time_window(2)),[1 3 2]),1)));
-            
-            counter = counter + 1; % add to counter
         end
+        
+        if mod(f,100) == 0
+            disp(horzcat('Calculated ',strings{s},' Bout Proportions for fish ',num2str(f),...
+                ' of ',num2str(max(fish_tags{s,1}))));
+        end 
     end
-    
-    % Add night patches
-    y_lims = [(min(scrap(2,:)) - min(scrap(2,:))*0.05) ...
-        (max(scrap(1,:)) + max(scrap(1,:))*0.05)]; % Add a bit of space either side
-    
-    a = 1; night_start = first_night; % Start counters
-    for n = 1:size(nights,2) % For each night
-        r(a) = rectangle('Position',[(night_start-0.5) y_lims(1)...
-            1 (y_lims(2)-y_lims(1))],...
-            'FaceColor',night_color,'Edgecolor',[1 1 1]);
-        uistack(r(a),'bottom'); % Send to back
-        a = a + 1; night_start = night_start + 2; % Add to counters
-    end
-    
-    % Figure Looks
-    if c == 5 % For the 5th cluster
-        [~,~,~,~] = legend(legend_cell,'Location','northeast'); % Generate axis
-        legend('boxoff'); % Turn legend off
-    end
-    axis([0.5 size([days_crop(days) nights_crop(nights)],2)+0.5 ...
-        y_lims]); % Set axis
-    box off; set(gca, 'Layer','top'); set(gca,'Fontsize',12); % Format
-    xlabel('Time (Days/Nights)','Fontsize',12); % X Labels
-    set(gca, 'XTick', []); % Turn off X-Ticks
-    ylabel('Proportion of Bouts','Fontsize',12); % Y Labels
-    
 end
 
-% Inactive 
-figure; hold on;
-for c = 1:numComp(2) % for each cluster
-    subplot(2,3,c); title(horzcat('Inactive Cluster ',num2str(c))); hold on;
-    counter = 1; clear scrap; % subplot
-    for e = 1:max(i_experiment_tags) % for each experiment
-        for g = 1:max(i_group_tags) % for each group
-            legend_lines(g) = errorbar(nanmean(permute(bout_proportions{2,1}(i_group_tags == g &...
-                i_experiment_tags == e,c,time_window(1):time_window(2)),[1 3 2])),...
-                nanstd(permute(bout_proportions{2,1}(i_group_tags == g &...
-                i_experiment_tags == e,c,time_window(1):time_window(2)),[1 3 2]))/...
-                sqrt(size(permute(bout_proportions{2,1}(i_group_tags == g &...
-                i_experiment_tags == e,c,time_window(1):time_window(2)),[1 3 2]),1)),...
-                'color',cmap(g,:)+(1-cmap(g,:))*(1-(1/e^.5)),'linewidth',3);
+clear s f c t
+toc
+
+%% Bout Proportions Figure
+
+for er = 1:max(experiment_reps) % for each group of experiments
+    figure; counter = 1; % start counters 
+    for s = 1:2 % for active & inactive
+        for c = 1:numComp(s) % for each cluster
             
-            if e == 1 % For the first experiment
-                legend_cell{g} = horzcat(geno_list.colheaders{g},', n = (',...
-                    num2str(size(find(i_group_tags == g),1)),')');
+            counter_2 = 1; % start a counter 
+            subplot(4,4,counter); set(gca,'FontName','Calibri'); ...
+                title(horzcat(strings{s},' Cluster ',num2str(c))); hold on;
+            
+            for e = find(experiment_reps == er) % for each experiment
+                for g = 1:max(i_group_tags(i_experiment_tags == e)) % for each group
+                    legend_lines(g) = errorbar(nanmean(permute(bout_proportions{s,1}(i_experiment_tags == e & ...
+                        i_group_tags == g,c,time_window{e}(1):time_window{e}(2)),[1 3 2])),...
+                        (nanstd(permute(bout_proportions{s,1}(i_experiment_tags == e & ...
+                        i_group_tags == g,c,time_window{e}(1):time_window{e}(2)),[1 3 2]))/sqrt(sum(i_experiment_tags==e & i_group_tags==g))),...
+                        'color',cmap{e}(g,:)+(1-cmap{e}(g,:))*(1-(1/counter_2^.5)),'linewidth',3);
+                    
+                    if e == find(experiment_reps == er,1,'first') % For the first experiment
+                        legend_cell{g} = geno_list{e}.colheaders{g};
+                    end
+                    
+                    scrap(counter_2,g,1) = min(nanmean(permute(bout_proportions{s,1}(i_experiment_tags == e & ...
+                        i_group_tags == g,c,time_window{e}(1):time_window{e}(2)),[1 3 2])) - ...
+                        (nanstd(permute(bout_proportions{s,1}(i_experiment_tags == e & ...
+                        i_group_tags == g,c,time_window{e}(1):time_window{e}(2)),[1 3 2]))/sqrt(sum(i_experiment_tags==e & i_group_tags==g)))); 
+                    scrap(counter_2,g,2) = max(nanmean(permute(bout_proportions{s,1}(i_experiment_tags == e & ...
+                        i_group_tags == g,c,time_window{e}(1):time_window{e}(2)),[1 3 2])) + ...
+                        (nanstd(permute(bout_proportions{s,1}(i_experiment_tags == e & ...
+                        i_group_tags == g,c,time_window{e}(1):time_window{e}(2)),[1 3 2]))/sqrt(sum(i_experiment_tags==e & i_group_tags==g)))); 
+                end
+                counter_2 = counter_2 + 1;
+            end
+                        
+            % Add night patches
+            y_lims = [(min(min(scrap(:,:,1))) - (min(min(scrap(:,:,1)))*0.05)) ...
+                (max(max(scrap(:,:,2))) + (max(max(scrap(:,:,2)))*0.05))]; % Add a bit of space either side
+            
+            a = 1; night_start = first_night{e}; % Start counters
+            for n = 1:size(nights{e},2) % For each night
+                r(a) = rectangle('Position',[(night_start-0.5) y_lims(1)...
+                    1 (y_lims(2)-y_lims(1))],...
+                    'FaceColor',night_color{e},'Edgecolor',[1 1 1]);
+                uistack(r(a),'bottom'); % Send to back
+                a = a + 1; night_start = night_start + 2; % Add to counters
             end
             
-            scrap(1,counter) = max(nanmean(permute(bout_proportions{2,1}(i_group_tags == g &...
-                i_experiment_tags == e,c,time_window(1):time_window(2)),[1 3 2])) +...
-                nanstd(permute(bout_proportions{2,1}(i_group_tags == g &...
-                i_experiment_tags == e,c,time_window(1):time_window(2)),[1 3 2]))/...
-                sqrt(size(permute(bout_proportions{2,1}(i_group_tags == g &...
-                i_experiment_tags == e,c,time_window(1):time_window(2)),[1 3 2]),1)));
-            scrap(2,counter) = min(nanmean(permute(bout_proportions{2,1}(i_group_tags == g &...
-                i_experiment_tags == e,c,time_window(1):time_window(2)),[1 3 2])) -...
-                nanstd(permute(bout_proportions{2,1}(i_group_tags == g &...
-                i_experiment_tags == e,c,time_window(1):time_window(2)),[1 3 2]))/...
-                sqrt(size(permute(bout_proportions{2,1}(i_group_tags == g &...
-                i_experiment_tags == e,c,time_window(1):time_window(2)),[1 3 2]),1)));
+            % Figure Looks
+            if c == 4 && s == 1 % For the 4th active cluster
+                [~,~,~,~] = legend(legend_cell,'Location','best'); % Generate axis
+                legend('boxoff'); % Turn legend off
+            end
             
-            counter = counter + 1; % add to counter
+            axis([0.5 size([days_crop{e}(days{e}) nights_crop{e}(nights{e})],2)+0.5 ...
+                y_lims]); % Set axis
+            
+            box off; set(gca, 'Layer','top'); set(gca,'Fontsize',12); % Format
+            xlabel('Time (Days/Nights)','Fontsize',12); % X Labels
+            set(gca, 'XTick', []); % Turn off X-Ticks
+            ylabel('Proportion of Bouts','Fontsize',12); % Y Labels
+            
+            counter = counter + 1; 
+            
+            clear scrap y_lims legend_lines legend_cell
         end
     end
-    
-    % Add night patches
-    y_lims = [(min(scrap(2,:)) - min(scrap(2,:))*0.05) ...
-        (max(scrap(1,:)) + max(scrap(1,:))*0.05)]; % Add a bit of space either side
-    
-    a = 1; night_start = first_night; % Start counters
-    for n = 1:size(nights,2) % For each night
-        r(a) = rectangle('Position',[(night_start-0.5) y_lims(1)...
-            1 (y_lims(2)-y_lims(1))],...
-            'FaceColor',night_color,'Edgecolor',[1 1 1]);
-        uistack(r(a),'bottom'); % Send to back
-        a = a + 1; night_start = night_start + 2; % Add to counters
-    end
-    
-    % Figure Looks
-    if c == 3 % For the 5th cluster
-        [~,~,~,~] = legend(legend_cell,'Location','northeast'); % Generate axis
-        legend('boxoff'); % Turn legend off
-    end
-    axis([0.5 size([days_crop(days) nights_crop(nights)],2)+0.5 ...
-        y_lims]); % Set axis
-    box off; set(gca, 'Layer','top'); set(gca,'Fontsize',12); % Format
-    xlabel('Time (Days/Nights)','Fontsize',12); % X Labels
-    set(gca, 'XTick', []); % Turn off X-Ticks
-    ylabel('Proportion of Bouts','Fontsize',12); % Y Labels
-    
 end
 
-clear c counter scrap e g a n y_lims r legend_cell legend_cols legend_lines
+clear er counter s c e g legend_lines legend_cell scrap y_lims ... 
+    a night_start n r
 
 %% Bout Proportion Stats
 % Grouping variables - note that these are the same for both states 
@@ -805,6 +707,69 @@ end
 
 clear anova_experiment anova_group anova_time anova_development ...
     t d c scrap 
+
+%% Mean "Goodness" of fit for each cluster
+
+% 180108 - Should instead work with distributions? 
+
+p_assign_dist_mean{1,1} = nan(max(fish_tags{1,1}),numComp(1),'single'); % fish x clusters  
+p_assign_dist_mean{2,1} = nan(max(fish_tags{2,1}),numComp(2),'single'); % fish x clusters  
+    
+tic
+for s = 1:2 % active & inactive
+    for f = 1:max(fish_tags{s,1}) % For each fish
+        for c = 1:numComp(s) % For each cluster
+            p_assign_dist_mean{s,1}(f,c) = nanmean(P{s,1}...
+                (idx_numComp_sorted{s,1} == c & fish_tags{s,1} == f));
+        end
+    end
+end
+toc 
+
+% Figure 
+figure; hold on; % Figure
+for s = 1:2 % active & inactive
+    for c = 1:numComp(s) % For each active cluster
+        subplot(3,6,c); title(horzcat('Active Cluster ',num2str(c)));
+        for e = 1:max(experiment_tags{1,1}) % For each experiment
+            spread_cols = plotSpread(p_assign_dist_mean{1,1}(i_experiment_tags == e,c),...
+                'distributionIdx',i_group_tags(i_experiment_tags == e),...
+                'distributionColors',cmap+(1-cmap)*(1-(1/e^.5)),'showMM',2);
+            spread_cols{2}.LineWidth = 3; % Change marker width
+        end
+        ylabel('Posterior Probability','Fontsize',12);
+        set(gca,'xticklabel',geno_list.colheaders,'Fontsize',12); % Name each group
+    end
+end
+
+% Stats 
+% Active 
+for c = 1:numComp(1) % For each active cluster
+    if max(experiment_tags{1,1}) > 1 % With experiment tags 
+        [twa.gf.active.p(1:3,c),~,twa.gf.active.stats{c}] = anovan...
+            (p_assign_dist_mean{1,1}(:,c),{i_group_tags,i_experiment_tags},...
+            'display','off','model','full');
+    else % Without experiment tags 
+        [twa.gf.active.p(1,c),~,twa.gf.active.stats{c}] = anovan...
+            (p_assign_dist_mean{1,1}(:,c),{i_group_tags},...
+            'display','off','model','full'); % Try without
+    end
+end
+
+% Inactive 
+for c = 1:numComp(2) % For each cluster
+    if max(experiment_tags{2,1}) > 1 % With experiment tags 
+        [twa.gf.inactive.p(1:3,c),~,twa.gf.inactive.stats{c}] = anovan...
+            (p_assign_dist_mean{2,1}(:,c),{i_group_tags,i_experiment_tags},...
+            'display','off','model','full');
+    else % Without experiment tags 
+        [twa.gf.inactive.p(1,c),~,twa.gf.inactive.stats{c}] = anovan...
+            (p_assign_dist_mean{2,1}(:,c),{i_group_tags},...
+            'display','off','model','full'); % Try without
+    end
+end
+
+clear c e f spread_cols
 
 %% Scattering bouts in PCA Space
 % Active 
