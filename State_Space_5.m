@@ -376,6 +376,15 @@ cells{1,1} = wake_cells; cells{2,1} = sleep_cells;
 
 % Hard Coded Grouping Variable 
 experiment_reps = [1 1 1 2 2 3 3 4 5]; 
+i_experiment_reps = i_experiment_tags; 
+for er = 1:max(experiment_reps) % for each repeat 
+    found = find(experiment_reps == er); 
+    
+    for f = found % for each experiment in the repeat 
+        i_experiment_reps(i_experiment_reps == f,1) = er;
+    end 
+    
+end 
 
 % Adjust colours 
 for e = 1:size(cmap,2) % for each experiment
@@ -625,88 +634,61 @@ clear er counter s c e g legend_lines legend_cell scrap y_lims ...
     a night_start n r
 
 %% Bout Proportion Stats
-% Grouping variables - note that these are the same for both states 
-anova_group = repmat(i_group_tags,[size([days nights],2),1])';
-anova_experiment = repmat(i_experiment_tags,[size([days nights],2),1])';
-anova_time = []; 
-for t = time_window(1):time_window(2) % For each time window 
-    anova_time = [anova_time ; ones(size(i_experiment_tags,1),1)*mod(t,2)]; 
-    % Allocate alternating zeros and ones to each time window 
-end 
-anova_time = anova_time(:)'; % vectorise 
-if size(days_crop(days),2) == size(nights_crop(nights),2) % If there are an equal number of windows 
-    anova_development = []; % development
-    anova_development = zeros(1,size(anova_group,2)); % Pre-allocate 
-    d = 1:size(anova_development,2)/(size(time_window(1):time_window(2),2)/2):...
-        size(anova_development,2); % divide into "24h" windows 
-    for t = 1:size(d,2)-1 
-        anova_development(d(t):d(t+1)-1) = t; 
-    end 
-end 
 
-% Calculation 
-% Active 
-for c = 1:numComp(1) % For each active cluster 
-    clear scrap;
-    scrap = permute(bout_proportions{1,1}(:,c,time_window(1):time_window(2)),[1 3 2]); 
-    scrap = scrap(:)'; % Vectorise  
-      
-    if size(days_crop(days),2) == size(nights_crop(nights),2) % If comparing development 
-        if max(experiment_tags{1,1}) > 1 % If comparing experiments 
-            [twa.bp.active.p(:,c),~,twa.bp.active.stats{c}] = anovan(scrap,...
-                {anova_group,anova_time,anova_development,anova_experiment},...
-                'display','off','model','full');
-        else % Development but no experiments 
-            [twa.bp.active.p(1:7,c),~,twa.bp.active.stats{c}] = anovan(scrap,...
-                {anova_group,anova_time,anova_development},...
-                'display','off','model','full');
+for er = 1:max(experiment_reps) % for each group of experiments
+    set_token = find(experiment_reps == er,1,'first');
+    
+    for s = 1:2 % for active & inactive
+        
+        % Grouping Variables
+        anova_group = repmat(i_group_tags(i_experiment_reps==er),...
+            [size([days{set_token} nights{set_token}],2),1])'; % groups
+        anova_experiment = repmat(i_experiment_tags(i_experiment_reps==er),...
+            [size([days{set_token} nights{set_token}],2),1])'; % experiments
+        
+        anova_time = [];
+        for t = time_window{set_token}(1):time_window{set_token}(2) % For each time window
+            anova_time = [anova_time ; ones(sum(i_experiment_reps==er),1)*mod(t,2)];
+            % Allocate alternating zeros and ones to each time window
         end
-    else % Without development 
-        if max(experiment_tags{1,1}) > 1 % With experiments 
-            [twa.bp.active.p(1:7,c),~,twa.bp.active.stats{c}] = anovan(scrap,...
-                {anova_group,anova_time,anova_experiment},...
-                'display','off','model','full'); % Try without
-        else % Without experiments 
-            [twa.bp.active.p(1:3,c),~,twa.bp.active.stats{c}] = anovan(scrap,...
-                {anova_group,anova_time},...
-                'display','off','model','full'); % Try without
-        end     
-    end
-end
-
-% Inactive 
-for c = 1:numComp(2) % For each cluster 
-    clear scrap;
-    scrap = permute(bout_proportions{2,1}(:,c,time_window(1):time_window(2)),[1 3 2]); 
-    scrap = scrap(:)'; % Vectorise  
-      
-    if size(days_crop(days),2) == size(nights_crop(nights),2) % If comparing development 
-        if max(experiment_tags{2,1}) > 1 % If comparing experiments 
-            [twa.bp.inactive.p(:,c),~,twa.bp.inactive.stats{c}] = anovan(scrap,...
-                {anova_group,anova_time,anova_development,anova_experiment},...
-                'display','off','model','full');
-        else % Development but no experiments 
-            [twa.bp.inactive.p(1:7,c),~,twa.bp.inactive.stats{c}] = anovan(scrap,...
-                {anova_group,anova_time,anova_development},...
-                'display','off','model','full');
-        end
-    else % Without development 
-        if max(experiment_tags{2,1}) > 1 % With experiments 
-            [twa.bp.inactive.p(1:7,c),~,twa.bp.inactive.stats{c}] = anovan(scrap,...
-                {anova_group,anova_time,anova_experiment},...
-                'display','off','model','full'); % Try without
-        else % Without experiments 
-            [twa.bp.inactive.p(1:3,c),~,twa.bp.inactive.stats{c}] = anovan(scrap,...
-                {anova_group,anova_time},...
-                'display','off','model','full'); % Try without
+        anova_time = anova_time';
+        
+        % Development Grouping Variable
+        if size(days_crop{set_token}(days{set_token}),2) == ...
+                size(nights_crop{set_token}(nights{set_token}),2) ...
+                && size(days_crop{set_token}(days{set_token}),2) > 1 % If there are an equal number of windows (>1)
+            
+            anova_development = []; % development
+            anova_development = zeros(1,size(anova_group,2)); % Pre-allocate
+            d = 1:size(anova_development,2)/(size(time_window{set_token}(1):...
+                time_window{set_token}(2),2)/2):...
+                size(anova_development,2); % divide into "24h" windows
+            for t = 1:size(d,2)-1
+                anova_development(d(t):d(t+1)-1) = t;
+            end
+            
+        else 
+            anova_development = ones(size(anova_experiment)); 
         end
         
+        % Comparison
+        for c = 1:numComp(s) % For each active cluster
+            clear scrap;
+            scrap = permute(bout_proportions{s,1}(i_experiment_reps==er,...
+                c,time_window{set_token}(1):time_window{set_token}(2)),[1 3 2]);
+            scrap = scrap(:)'; % Vectorise
+            
+            [twa.bp.p{s,er}(:,c),~,twa.bp.stats{s,er,c}] = anovan(scrap,...
+                {anova_group,anova_time,anova_development,anova_experiment},...
+                'display','off','model','full');
+        end
+        
+        clear anova_development anova_experiment anova_group anova_time ... 
+            scrap 
     end
-    
 end
 
-clear anova_experiment anova_group anova_time anova_development ...
-    t d c scrap 
+clear er set_token s c 
 
 %% Mean "Goodness" of fit for each cluster
 
