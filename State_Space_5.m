@@ -541,7 +541,7 @@ bout_proportions{2,1} = nan(max(fish_tags{2,1}),numComp(2),max(parameter_indicie
     'single'); % fish x clusters x time windows 
 
 % Active
-for s = 1:2 % for active & inactive  
+parfor s = 1:2 % for active & inactive  
     for f = 1:max(fish_tags{s,1}) % For each fish
         for c = 1:numComp(s) % For each active bout type
             for t = 1:max(parameter_indicies{s,1}(fish_tags{s,1}==f)) % For each time window that fish uses 
@@ -694,66 +694,67 @@ clear er set_token s c
 
 % 180108 - Should instead work with distributions? 
 
-p_assign_dist_mean{1,1} = nan(max(fish_tags{1,1}),numComp(1),'single'); % fish x clusters  
-p_assign_dist_mean{2,1} = nan(max(fish_tags{2,1}),numComp(2),'single'); % fish x clusters  
+p_dist_mean{1,1} = nan(max(fish_tags{1,1}),numComp(1),'single'); % fish x clusters  
+p_dist_mean{2,1} = nan(max(fish_tags{2,1}),numComp(2),'single'); % fish x clusters  
     
 tic
-for s = 1:2 % active & inactive
+parfor s = 1:2 % active & inactive
     for f = 1:max(fish_tags{s,1}) % For each fish
         for c = 1:numComp(s) % For each cluster
-            p_assign_dist_mean{s,1}(f,c) = nanmean(P{s,1}...
+            p_dist_mean{s,1}(f,c) = nanmean(P{s,1}...
                 (idx_numComp_sorted{s,1} == c & fish_tags{s,1} == f));
         end
-    end
+    end 
 end
-toc 
+toc
 
-% Figure 
-figure; hold on; % Figure
-for s = 1:2 % active & inactive
-    for c = 1:numComp(s) % For each active cluster
-        subplot(3,6,c); title(horzcat('Active Cluster ',num2str(c)));
-        for e = 1:max(experiment_tags{1,1}) % For each experiment
-            spread_cols = plotSpread(p_assign_dist_mean{1,1}(i_experiment_tags == e,c),...
-                'distributionIdx',i_group_tags(i_experiment_tags == e),...
-                'distributionColors',cmap+(1-cmap)*(1-(1/e^.5)),'showMM',2);
-            spread_cols{2}.LineWidth = 3; % Change marker width
+%% Mean "Goodness" of fit Figure 
+
+for er = 1:max(experiment_reps) % for each group of experiments
+    figure; counter = 1; % start counters
+    for s = 1:2 % for active & inactive
+        for c = 1:numComp(s) % for each cluster
+            
+            counter_2 = 1; % start a counter
+            subplot(4,4,counter); set(gca,'FontName','Calibri'); ...
+                title(horzcat(strings{s},' Cluster ',num2str(c))); hold on;
+            
+            for e = find(experiment_reps == er) % for each experiment
+                spread_cols = plotSpread(p_dist_mean{s,1}(i_experiment_tags == e,c),...
+                    'distributionIdx',i_group_tags(i_experiment_tags == e),...
+                    'distributionColors',cmap{e}+(1-cmap{e})*(1-(1/counter_2^.5)),'showMM',2);
+                set(findall(er,'type','line'),'markersize',15); % change marker sizes  
+                spread_cols{2}.LineWidth = 3; spread_cols{2}.Color = 'k'; % Change Mean properties
+                spread_cols{2}.MarkerSize = 12; 
+                counter_2 = counter_2 + 1; 
+            end
+
+            ylabel('Posterior Probability','Fontsize',12);
+            set(gca,'xticklabel',geno_list{e}.colheaders,'Fontsize',12); % Name each group
+            counter = counter + 1; 
         end
-        ylabel('Posterior Probability','Fontsize',12);
-        set(gca,'xticklabel',geno_list.colheaders,'Fontsize',12); % Name each group
     end
 end
 
-% Stats 
-% Active 
-for c = 1:numComp(1) % For each active cluster
-    if max(experiment_tags{1,1}) > 1 % With experiment tags 
-        [twa.gf.active.p(1:3,c),~,twa.gf.active.stats{c}] = anovan...
-            (p_assign_dist_mean{1,1}(:,c),{i_group_tags,i_experiment_tags},...
-            'display','off','model','full');
-    else % Without experiment tags 
-        [twa.gf.active.p(1,c),~,twa.gf.active.stats{c}] = anovan...
-            (p_assign_dist_mean{1,1}(:,c),{i_group_tags},...
-            'display','off','model','full'); % Try without
+clear er counter s c counter_2 e spread_cols 
+%% Mean "Goodness" of fit Stats 
+
+for er = 1:max(experiment_reps) % for each group of experiments
+    for s = 1:2 % for active & inactive
+        for c = 1:numComp(s) % For each active cluster
+            [twa.gf.p{s,er}(1:3,c),~,twa.gf.stats{s,er,c}] = anovan...
+                (p_dist_mean{s,1}(i_experiment_reps==er,c),...
+                {i_group_tags(i_experiment_reps==er),i_experiment_tags(i_experiment_reps==er)},...
+                'display','off','model','full');
+        end      
     end
 end
 
-% Inactive 
-for c = 1:numComp(2) % For each cluster
-    if max(experiment_tags{2,1}) > 1 % With experiment tags 
-        [twa.gf.inactive.p(1:3,c),~,twa.gf.inactive.stats{c}] = anovan...
-            (p_assign_dist_mean{2,1}(:,c),{i_group_tags,i_experiment_tags},...
-            'display','off','model','full');
-    else % Without experiment tags 
-        [twa.gf.inactive.p(1,c),~,twa.gf.inactive.stats{c}] = anovan...
-            (p_assign_dist_mean{2,1}(:,c),{i_group_tags},...
-            'display','off','model','full'); % Try without
-    end
-end
+clear er s c 
 
-clear c e f spread_cols
+%% OLD onwards 
 
-%% Scattering bouts in PCA Space
+% Scattering bouts in PCA Space
 % Active 
     % Should try coloring each cluster using posterior probability bins
 figure; hold on; box off;  
@@ -785,7 +786,7 @@ for c = numComp(1):-1:1 % For each cluster
 end 
 clear scrap; 
 
-%% Old Bout Data Figures 
+%% Bout Data Figures 
     % Should sort by something (e.g. length)
 
 figure; 
