@@ -14,6 +14,7 @@
 %https://uk.mathworks.com/matlabcentral/fileexchange/35094-knee-point
 
 %% Load bout structure data (Parameter Extracted Data)
+
 tic
 % Load Data - using multiselect
 [filename, pathname] = uigetfile('*.mat', 'Select files','MultiSelect','on'); %Select files
@@ -74,7 +75,7 @@ for f = 1:size(filename,2) %For each file
         counter = counter + 1; % add to fish counter
     end
     
-    %delta_px_sq{1,f} = experiment.delta_px_sq;
+    %delta_px_sq{1,f} = experiment.delta_px_sq; skipping this is easier on memory
     i_group_tags = [i_group_tags ; experiment.group_tags]; % individual fish group tags
     i_experiment_tags = [i_experiment_tags ; ones(size(experiment.wake_cells,2),1)*f]; % individual fish experiment tags
     
@@ -82,6 +83,7 @@ end
 
 clear experiment f i counter;
 toc
+
 %% GMM Settings
 
 % Wake
@@ -99,7 +101,7 @@ toc
 
 [coeff,score,~,~,explained,~] = pca(X{1,1}); % pca
 % Note: By default Matlab Centers data for PCA by subtracting
-% the mean from each column (as the means are not quite zero this is
+% the mean from each column (as the means are not quite zero this seems
 % appropriate)
 [knee_dim] = knee_pt(explained); % Choose this many dimensions
 disp(horzcat('Reduced Wake data to ',num2str(knee_dim),' dimensions',...
@@ -134,7 +136,7 @@ X{2,1} = sleep_cells(:,3);
 %ds = [0.01 0.1 1 5 10 15 25 50]; % set the number of data points to use for each clustering iteration
 ds = 2000000; % two million
 reps = 1; % set the number of repetitions
-k_max = 1:20; % set values of k to try
+k_max = 1:20; % set values of k (clusters) to try
 options = statset('MaxIter',1000); % Hard coded number of iterations
 
 % Save path for data
@@ -149,6 +151,7 @@ for s = 1:2 % for sleep/wake
 end
 
 clear f s
+
 %% Ensure Even Sampling - Wake 
 
 % % Caluclate probability density in 2d 
@@ -231,7 +234,6 @@ for s = 1:2 % for wake/sleep
                 GMModels = cell(1);
                 idx = cell(1);
                 P = cell(1);
-                clear O;
                 
                 tic % start timer
                 GMModels{1} = fitgmdist(sample,k,...
@@ -239,8 +241,7 @@ for s = 1:2 % for wake/sleep
                     abs(rv),'Replicates',5); % Fit K gaussians
                 % To the down-sampled data
                 
-                % Cluster the full data-set
-                % Using this mixture
+                % Cluster the full data-set (using this mixture)
                 [idx{1},~,P{1}] = cluster(GMModels{1},X{s,1});
                 P{1} = max(P{1},[],2); % Keep only assigned probabilities (helps memory)
                 
@@ -268,7 +269,7 @@ for s = 1:2 % for wake/sleep
 end
 
 clear sample sample_tags score_values score_zero rv ...
-    GMModels idx P s d r k c;
+    GMModels idx P s d r k;
 
 % Save Data
 save(strcat(save_pathname,'\Full_Set.mat'),'-v7.3');
@@ -336,7 +337,7 @@ for s = 1:2 % for active & inactive
     ax(s) = subplot(1,2,s); set(gca,'FontName','Calibri'); hold on; title(strings{s,1});
     plot(BIC{s,1},'linewidth',3);
     box off; set(gca,'Layer','top'); set(gca,'Fontsize',32);
-    if s == 2
+    if s == 2 % for inactive 
         [~,icons,plots,~] = legend('BIC','Location','northeast');
         legend('boxoff');
         set(icons(1),'Fontsize',26) ; set(plots,'LineWidth',3);
@@ -356,61 +357,61 @@ for s = 1:2
     subplot(ax(s)); scatter(numComp(s),BIC{s,1}(numComp(s)),72,'k','filled'); 
 end 
 
-clear ax s scrap; 
-
 % Load Data 
 Wake = load(horzcat('D:\Behaviour\SleepWake\Re_Runs\Clustered_Data\New\Z_Score_Wake\1s_2000000d_1r_',...
     num2str(numComp(1)),'k.mat')); 
 Sleep = load(horzcat('D:\Behaviour\SleepWake\Re_Runs\Clustered_Data\New\Z_Score_Wake\2s_2000000d_1r_',...
     num2str(numComp(2)),'k.mat')); 
 
-% Remove NaN Values from Sleep 
-sleep_cells(sleep_cells_nan_track,3) = NaN; 
-Sleep.idx{1}(sleep_cells_nan_track,1) = NaN; 
-Sleep.P{1}(sleep_cells_nan_track,1) = NaN; 
+% Remove NaN Values from Sleep matracies  
+sleep_cells(sleep_cells_nan_track,3) = NaN; % sleep cells 
+Sleep.idx{1}(sleep_cells_nan_track,1) = NaN; % cluster assignments 
+Sleep.P{1}(sleep_cells_nan_track,1) = NaN; % posterior probabilities 
 
 % Merge Variables for ease of Looping 
-idx{1,1} = Wake.idx{1,1}; idx{2,1} = Sleep.idx{1};
-P{1,1} = Wake.P{1,1}; P{2,1} = Sleep.P{1}; 
-cells{1,1} = wake_cells; cells{2,1} = sleep_cells; 
+idx{1,1} = Wake.idx{1,1}; idx{2,1} = Sleep.idx{1,1}; % clusters  
+P{1,1} = Wake.P{1,1}; P{2,1} = Sleep.P{1,1}; % posterior probabilities 
+cells{1,1} = wake_cells; cells{2,1} = sleep_cells; % cells 
 
-% Hard Coded Grouping Variable 
-experiment_reps = [1 1 1 2 2 3 3 4 5]; 
-i_experiment_reps = i_experiment_tags; 
+% Grouping repeats of experiments (hard coded)
+experiment_reps = [1 1 1 2 2 3 3 4 5]; % experiment groupings 
+i_experiment_reps = i_experiment_tags;
 for er = 1:max(experiment_reps) % for each repeat 
-    found = find(experiment_reps == er); 
+    found = find(experiment_reps == er); % find experiments
     
     for f = found % for each experiment in the repeat 
-        i_experiment_reps(i_experiment_reps == f,1) = er;
+        i_experiment_reps(i_experiment_reps == f,1) = er; % tag with grouping variable 
     end 
     
 end 
 
 % Adjust colours 
 for e = 1:size(cmap,2) % for each experiment
-    if max(i_group_tags(i_experiment_tags==e)) == 1
+    if max(i_group_tags(i_experiment_tags==e)) == 1 % if theres just one group (e.g. WT experiments)
         cmap{e}(1,:) = [135 206 250]/255; % light sky blue
         cmap_2{e}(1,:) = cmap{e};
         cmap_2{e}(2,:) = [25 25 112]/255; % midnight blue
-    else
-        cmap_2{e} = flip(cmap_2{e}); % flip cmap
-        for c = 1:2:size(cmap_2{e},1)
-            cmap_2{e}([c c+1],:) = cmap_2{e}([c+1 c],:); % swap the colors around
+    else % for experiments with multiple groups 
+        cmap_2{e} = flip(cmap_2{e}); % flip cmap (so it starts with blue)
+        for c = 1:2:size(cmap_2{e},1) % for every other color 
+            cmap_2{e}([c c+1],:) = cmap_2{e}([c+1 c],:); % swap pairs of colours around 
         end
         cmap{e} = cmap_2{e}(1:2:size(cmap_2{e},1),:); % Extract main colors
     end
 end
 
-% Adjust time windows 
+% Adjust time windows (Hard coded) 
 for e = 1:size(time_window,2) % for each experiment 
     if experiment_reps(e) < 4 
-       time_window{e} = [3 6];
+       time_window{e} = [3 6]; % take the middle two days/nights 
        days{e} = [2 3]; nights{e} = [2 3]; 
     else
-       time_window{e} = [1 2];
+       time_window{e} = [1 2]; % take the first day/night 
        days{e} = 1;
     end 
 end 
+
+clear s ax icons plots scrap Wake Sleep er f e c
 
 %% Sorting Clusters by Mean Length 
              
@@ -418,7 +419,7 @@ for s = 1:2 % for active & inactive
     mean_cluster_length = nan(1,numComp(s),'single'); % pre-allocate
     for c = 1:numComp(s) % For each cluster
         mean_cluster_length(c) = nanmean(cells{s,1}(idx{s,1}==c,3));
-        % Calculate max bout length
+        % Calculate mean bout length
     end
     
     [~,O] = sort(mean_cluster_length); % Sort by increasing bout length
@@ -430,12 +431,15 @@ for s = 1:2 % for active & inactive
         % Re-assign cluster numbers
     end
     
-    clear mean_cluster_length s c O;
+    clear s mean_cluster_length c O;
 end
 
+clear idx
+
 %% Cluster Parameters - Fits 
+
 tic
-parameter_dists = cell(2,1); 
+parameter_dists = cell(2,1); % structure {s,parameters}(cluster,min:max(parmater:))
 
 for s = 1:2 % for active & inactive
     for p = 3:size(cells{s,1},2) % for each parameter
@@ -448,25 +452,30 @@ for s = 1:2 % for active & inactive
 end
 toc
 
+clear s p k pd 
+
 %% Cluster Parameters - Fits Figure 
+
 figure;
 counter = 1; % start a counter 
 for s = 1:2 % for active & inactive
     for p = 1:size(cells{s,1},2) - 2 % For each parameter
+        % Figure Settings
         subplot(2,4,counter); hold on;
-        box off; set(gca, 'Layer','top'); set(gca,'Fontsize',12); set(gca,'FontName','Calibri'); % Set Font
-        if s ~= 2
+        box off; set(gca,'Layer','top'); set(gca,'Fontsize',12); set(gca,'FontName','Calibri'); % Set Font
+        if s ~= 2 % for active parameters 
             title(parameters{1}{p}); % Add title
-        else
+        else % for inactive bout length 
             title(parameters{1}{10}); % Add title   
         end
         
+        % Plot 
         crop = size(parameter_dists{s,p},2); 
-        
         for k = 1:numComp(s) % for each cluster
             plot((1:crop)/unit_conversion{1}(s,p),parameter_dists{s,p}(k,:),'color',cmap_cluster{s,1}(k,:),'linewidth',3)
         end
         
+        % Axes 
         set(gca,'XTick',...
             [1/unit_conversion{1}(s,p), 1/unit_conversion{1}(s,p)*10,...
             crop/unit_conversion{1}(s,p)]); % set x tick labels
@@ -485,19 +494,19 @@ for s = 1:2 % for active & inactive
         xlabel(units{1}(p),'Fontsize',12); % X labels
         ylabel('Probability Density','Fontsize',12); % Y label
         
-        counter = counter + 1;
+        counter = counter + 1; % add to counter 
         
         % Legend Plot 
         if counter == 8 
             subplot(2,4,counter); hold on;
-            box off; set(gca, 'Layer','top'); set(gca,'Fontsize',12); set(gca,'FontName','Calibri'); % Set Font
+            box off; set(gca,'Layer','top'); set(gca,'Fontsize',12); set(gca,'FontName','Calibri'); % Set Font
             title('Legend'); 
             
-            for s = 1:2 % for active & inactive 
-                for k = 1:numComp(s) % for each cluster 
-                    scatter(k,mod(s,2),300,...
-                        'markerfacecolor',cmap_cluster{s,1}(k,:),...
-                        'markeredgecolor',cmap_cluster{s,1}(k,:));
+            for s_2 = 1:2 % for active & inactive 
+                for k = 1:numComp(s_2) % for each cluster 
+                    scatter(k,mod(s_2,2),300,...
+                        'markerfacecolor',cmap_cluster{s_2,1}(k,:),...
+                        'markeredgecolor',cmap_cluster{s_2,1}(k,:));
                 end 
             end 
             
@@ -510,69 +519,67 @@ for s = 1:2 % for active & inactive
     end
 end
 
+clear counter s p crop k s_2
 
 %% Posterior Probabilities 
 
-% Figure 
-clear pd; 
-pd = fitdist(P{1,1},'Kernel','Width',0.05); % Fit distribution 
+% Fit  
+pd = fitdist(P{1,1},'Kernel','Width',0.05); % Fit kernel distribution 
 p_dist{1,1} = pdf(pd,0:0.05:1); clear pd; % Save as pdf  
-pd = fitdist(P{2,1},'Kernel','Width',0.1); % Fit distribution
+pd = fitdist(P{2,1},'Kernel','Width',0.05); % Fit kernel distribution
 p_dist{2,1} = pdf(pd,0:0.05:1); % Save as pdf 
 
+% Figure
 figure; hold on; set(gca,'FontName','Calibri'); title('Posterior Probabilities'); 
 plot(0:0.05:1,p_dist{1,1},'color',cmap_cluster{1,1}(1,:),'linewidth',3)
 plot(0:0.05:1,p_dist{2,1},'color',cmap_cluster{2,1}(1,:),'linewidth',3)
 
-box off; set(gca, 'Layer','top'); set(gca,'Fontsize',32);
+box off; set(gca,'Layer','top'); set(gca,'Fontsize',32);
 [~,icons,plots,~] = legend('Active Bouts','Inactive Bouts','Location','northwest');
 legend('boxoff'); 
 set(icons(1:2),'Fontsize',26) ; set(plots,'LineWidth',3);
 xlabel('Posterior Probability','Fontsize',26);
 ylabel('Probability Density','Fontsize',26);
-clear ax s o pd icons plots; 
 
+clear pd icons plots 
 
 %% Bout Proportions  
+
 tic
 bout_proportions{1,1} = nan(max(fish_tags{1,1}),numComp(1),max(parameter_indicies{1,1}),...
     'single'); % fish x clusters x time windows 
 bout_proportions{2,1} = nan(max(fish_tags{2,1}),numComp(2),max(parameter_indicies{2,1}),...
     'single'); % fish x clusters x time windows 
 
-% Active
 parfor s = 1:2 % for active & inactive  
     for f = 1:max(fish_tags{s,1}) % For each fish
         for c = 1:numComp(s) % For each active bout type
             for t = 1:max(parameter_indicies{s,1}(fish_tags{s,1}==f)) % For each time window that fish uses 
                 bout_proportions{s,1}(f,c,t) = sum(fish_tags{s,1}==f & idx_numComp_sorted{s,1}==c ...
                     & parameter_indicies{s,1}==t)/...
-                    sum(fish_tags{s,1}==f & parameter_indicies{s,1} == t);
+                    sum(fish_tags{s,1}==f & parameter_indicies{s,1}==t); 
+                % the number of times fish (f) uses cluster (c) time (t) 
+                % divide by the number of bouts fish (f) has that time (t) 
             end
         end
-        
-        if mod(f,100) == 0
-            disp(horzcat('Calculated ',strings{s},' Bout Proportions for fish ',num2str(f),...
-                ' of ',num2str(max(fish_tags{s,1}))));
-        end 
     end
 end
-
-clear s f c t
 toc
+
+clear s f c t 
 
 %% Bout Proportions Figure
 
 for er = 1:max(experiment_reps) % for each group of experiments
-    figure; counter = 1; % start counters 
+    figure; counter = 1; % start counter to track clusters 
     for s = 1:2 % for active & inactive
         for c = 1:numComp(s) % for each cluster
             
-            counter_2 = 1; % start a counter 
+            counter_2 = 1; % start a counter to track color shades 
             subplot(4,4,counter); set(gca,'FontName','Calibri'); ...
                 title(horzcat(strings{s},' Cluster ',num2str(c))); hold on;
             
-            for e = find(experiment_reps == er) % for each experiment
+            for e = find(experiment_reps == er) % for each experiment in this group (er) 
                 for g = 1:max(i_group_tags(i_experiment_tags == e)) % for each group
                     legend_lines(g) = errorbar(nanmean(permute(bout_proportions{s,1}(i_experiment_tags == e & ...
                         i_group_tags == g,c,time_window{e}(1):time_window{e}(2)),[1 3 2])),...
@@ -581,13 +588,15 @@ for er = 1:max(experiment_reps) % for each group of experiments
                         'color',cmap{e}(g,:)+(1-cmap{e}(g,:))*(1-(1/counter_2^.5)),'linewidth',3);
                     
                     if e == find(experiment_reps == er,1,'first') % For the first experiment
-                        legend_cell{g} = geno_list{e}.colheaders{g};
+                        legend_cell{g} = geno_list{e}.colheaders{g}; % add to legend 
                     end
                     
+                    % determining good axis boundaries 
                     scrap(counter_2,g,1) = min(nanmean(permute(bout_proportions{s,1}(i_experiment_tags == e & ...
                         i_group_tags == g,c,time_window{e}(1):time_window{e}(2)),[1 3 2])) - ...
                         (nanstd(permute(bout_proportions{s,1}(i_experiment_tags == e & ...
                         i_group_tags == g,c,time_window{e}(1):time_window{e}(2)),[1 3 2]))/sqrt(sum(i_experiment_tags==e & i_group_tags==g)))); 
+                    
                     scrap(counter_2,g,2) = max(nanmean(permute(bout_proportions{s,1}(i_experiment_tags == e & ...
                         i_group_tags == g,c,time_window{e}(1):time_window{e}(2)),[1 3 2])) + ...
                         (nanstd(permute(bout_proportions{s,1}(i_experiment_tags == e & ...
@@ -618,25 +627,25 @@ for er = 1:max(experiment_reps) % for each group of experiments
             axis([0.5 size([days_crop{e}(days{e}) nights_crop{e}(nights{e})],2)+0.5 ...
                 y_lims]); % Set axis
             
-            box off; set(gca, 'Layer','top'); set(gca,'Fontsize',12); % Format
+            box off; set(gca,'Layer','top'); set(gca,'Fontsize',12); % Format
             xlabel('Time (Days/Nights)','Fontsize',12); % X Labels
             set(gca, 'XTick', []); % Turn off X-Ticks
             ylabel('Proportion of Bouts','Fontsize',12); % Y Labels
             
             counter = counter + 1; 
             
-            clear scrap y_lims legend_lines legend_cell
+            clear scrap y_lims legend_lines legend_cell r 
         end
     end
 end
 
-clear er counter s c e g legend_lines legend_cell scrap y_lims ... 
-    a night_start n r
+clear er counter s c counter_2 e g legend_lines legend_cell scrap ...
+    y_lims a night_start n r 
 
 %% Bout Proportion Stats
 
 for er = 1:max(experiment_reps) % for each group of experiments
-    set_token = find(experiment_reps == er,1,'first');
+    set_token = find(experiment_reps == er,1,'first'); % used for each experiments sets settings 
     
     for s = 1:2 % for active & inactive
         
@@ -665,10 +674,9 @@ for er = 1:max(experiment_reps) % for each group of experiments
                 size(anova_development,2); % divide into "24h" windows
             for t = 1:size(d,2)-1
                 anova_development(d(t):d(t+1)-1) = t;
-            end
-            
+            end     
         else 
-            anova_development = ones(size(anova_experiment)); 
+            anova_development = ones(size(anova_experiment)); % use all ones  
         end
         
         % Comparison
@@ -688,11 +696,10 @@ for er = 1:max(experiment_reps) % for each group of experiments
     end
 end
 
-clear er set_token s c 
+clear er set_token s anova_group anova_experiment anova_time anova_development ...
+    c scrap 
 
 %% Mean "Goodness" of fit for each cluster
-
-% 180108 - Should instead work with distributions? 
 
 p_dist_mean{1,1} = nan(max(fish_tags{1,1}),numComp(1),'single'); % fish x clusters  
 p_dist_mean{2,1} = nan(max(fish_tags{2,1}),numComp(2),'single'); % fish x clusters  
@@ -703,19 +710,22 @@ parfor s = 1:2 % active & inactive
         for c = 1:numComp(s) % For each cluster
             p_dist_mean{s,1}(f,c) = nanmean(P{s,1}...
                 (idx_numComp_sorted{s,1} == c & fish_tags{s,1} == f));
+            % the mean posterior probability for each cluster & fish 
         end
     end 
 end
 toc
 
+clear s f c 
+
 %% Mean "Goodness" of fit Figure 
 
 for er = 1:max(experiment_reps) % for each group of experiments
-    figure; counter = 1; % start counters
+    figure; counter = 1; % start subplot counter 
     for s = 1:2 % for active & inactive
         for c = 1:numComp(s) % for each cluster
             
-            counter_2 = 1; % start a counter
+            counter_2 = 1; % start color shade counter
             subplot(4,4,counter); set(gca,'FontName','Calibri'); ...
                 title(horzcat(strings{s},' Cluster ',num2str(c))); hold on;
             
@@ -726,22 +736,23 @@ for er = 1:max(experiment_reps) % for each group of experiments
                 set(findall(er,'type','line'),'markersize',15); % change marker sizes  
                 spread_cols{2}.LineWidth = 3; spread_cols{2}.Color = 'k'; % Change Mean properties
                 spread_cols{2}.MarkerSize = 12; 
-                counter_2 = counter_2 + 1; 
+                counter_2 = counter_2 + 1; % add to color shade counter 
             end
 
             ylabel('Posterior Probability','Fontsize',12);
             set(gca,'xticklabel',geno_list{e}.colheaders,'Fontsize',12); % Name each group
-            counter = counter + 1; 
+            counter = counter + 1; % add to subplot counter 
         end
     end
 end
 
 clear er counter s c counter_2 e spread_cols 
+
 %% Mean "Goodness" of fit Stats 
 
 for er = 1:max(experiment_reps) % for each group of experiments
     for s = 1:2 % for active & inactive
-        for c = 1:numComp(s) % For each active cluster
+        for c = 1:numComp(s) % For each cluster
             [twa.gf.p{s,er}(1:3,c),~,twa.gf.stats{s,er,c}] = anovan...
                 (p_dist_mean{s,1}(i_experiment_reps==er,c),...
                 {i_group_tags(i_experiment_reps==er),i_experiment_tags(i_experiment_reps==er)},...
