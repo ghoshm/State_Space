@@ -543,7 +543,7 @@ ylabel('Probability Density','Fontsize',26);
 
 clear pd icons plots 
 
-%% Bout Proportions  
+%% Bout Proportions (slow...)
 
 tic
 bout_proportions{1,1} = nan(max(fish_tags{1,1}),numComp(1),max(parameter_indicies{1,1}),...
@@ -551,7 +551,8 @@ bout_proportions{1,1} = nan(max(fish_tags{1,1}),numComp(1),max(parameter_indicie
 bout_proportions{2,1} = nan(max(fish_tags{2,1}),numComp(2),max(parameter_indicies{2,1}),...
     'single'); % fish x clusters x time windows 
 
-parfor s = 1:2 % for active & inactive  
+for s = 1:2 % for active & inactive  
+    % note that comms overhead makes this faster as a for rather than a parfor loop  
     for f = 1:max(fish_tags{s,1}) % For each fish
         for c = 1:numComp(s) % For each active bout type
             for t = 1:max(parameter_indicies{s,1}(fish_tags{s,1}==f)) % For each time window that fish uses 
@@ -560,6 +561,9 @@ parfor s = 1:2 % for active & inactive
                     sum(fish_tags{s,1}==f & parameter_indicies{s,1}==t); 
                 % the number of times fish (f) uses cluster (c) time (t) 
                 % divide by the number of bouts fish (f) has that time (t) 
+                
+                % Note - will return zero's when a fish doesn't use a
+                % particular bout type :-)
             end
         end
     end
@@ -703,7 +707,8 @@ clear er set_token s anova_group anova_experiment anova_time anova_development .
 
 p_dist_mean{1,1} = nan(max(fish_tags{1,1}),numComp(1),'single'); % fish x clusters  
 p_dist_mean{2,1} = nan(max(fish_tags{2,1}),numComp(2),'single'); % fish x clusters  
-    
+    % Note that using NaN's means that fish who don't have a particular
+    % bout type won't contribute to the mean fit :-) 
 tic
 parfor s = 1:2 % active & inactive
     for f = 1:max(fish_tags{s,1}) % For each fish
