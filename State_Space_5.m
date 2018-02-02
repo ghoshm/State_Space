@@ -15,6 +15,8 @@
 
 %% Load bout structure data (Parameter Extracted Data)
 
+set(0,'DefaultFigureWindowStyle','docked'); % dock figures 
+
 tic
 % Load Data - using multiselect
 [filename, pathname] = uigetfile('*.mat', 'Select files','MultiSelect','on'); %Select files
