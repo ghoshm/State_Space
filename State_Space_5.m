@@ -16,6 +16,7 @@
 %% Load bout structure data (Parameter Extracted Data)
 
 set(0,'DefaultFigureWindowStyle','docked'); % dock figures 
+set(0,'defaultfigurecolor',[1 1 1]); % white background
 
 tic
 % Load Data - using multiselect
