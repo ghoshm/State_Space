@@ -1,4 +1,4 @@
-% State_Space_5 
+%% State_Space_5 
 
 % V4 - Aims to use previous state space versions as a rough frame work to now 
     % work with data from Bed_frames (frame by frame data)
@@ -13,10 +13,11 @@
 % Knee_pt 
 %https://uk.mathworks.com/matlabcentral/fileexchange/35094-knee-point
 
-%% Load bout structure data (Parameter Extracted Data)
-
+%% Settings 
 set(0,'DefaultFigureWindowStyle','docked'); % dock figures 
 set(0,'defaultfigurecolor',[1 1 1]); % white background
+
+%% Load bout structure data (Parameter Extracted Data)
 
 tic
 % Load Data - using multiselect
