@@ -54,33 +54,33 @@ for s = 1:2 % for active/inactive
     
 end
 
-%% RCE 
+%% RCE
 load('D:\Behaviour\SleepWake\Re_Runs\Post_State_Space_Data\New\180111.mat', 'score');
 %load('D:\Behaviour\SleepWake\Re_Runs\Post_State_Space_Data\New\180111.mat', 'sleep_cells');
 
-    X = datasample(score(:,1:3),10000)'; % 40000 limit 
-    %X = datasample(sleep_cells(:,3),10000)'; X = [X ; X]; 
-    N = size(X,2); % number of samples 
+X = datasample(score(:,1:3),10000)'; % 40000 limit
+%X = datasample(sleep_cells(:,3),10000)'; X = [X ; X];
+N = size(X,2); % number of samples
 
-    % set the fuzzifier constant to 1.4
-    m = 1.4;
+% set the fuzzifier constant to 1.4
+m = 1.4;
 
-    % Optimize the swarm using 80% resampling rate and mahalanobis distance
-    swarm = RCE(X, 8, 'distance','euclidean','fuzzifier',m, 'display','text', ...
-    'swarm',100, 'subsprob',0.03, 'maxiter',100,'resampling_rate',0.1,'calculate_labels', false);
+% Optimize the swarm using 80% resampling rate and mahalanobis distance
+swarm = RCE(X, 6, 'distance','euclidean','fuzzifier',m, 'display','text', ...
+    'swarm',200, 'subsprob',0.03, 'maxiter',100,'resampling_rate',0.8,'calculate_labels', false);
 
-    % input vectors using the Swarm
-    [softlabels, crisplabels, numlabels] = swarm_cluster(X,swarm);
+% input vectors using the Swarm
+[softlabels, crisplabels, numlabels] = swarm_cluster(X,swarm);
 
-    % plot the fuzzy voronoi cells on the 1st and 2nd dimension
-    visualize_swarm(X,swarm,1,3,m,200)
+% plot the fuzzy voronoi cells on the 1st and 2nd dimension
+visualize_swarm(X,swarm,1,2,m,200)
 
-    % Perform fuzzy evidence accumulation on the swarm
-    ensemble = EnsembleAggregate(softlabels,'complete',true);
+% Perform fuzzy evidence accumulation on the swarm
+ensemble = EnsembleAggregate(softlabels,'complete',true);
 
-    % plot the scatter matrix             
-    figure('name','scatterplot');
-    gplotmatrix(X(:,:)',[],ensemble.ensemble_labels)
+% plot the scatter matrix
+figure('name','scatterplot');
+gplotmatrix(X(:,:)',[],ensemble.ensemble_labels)
 
 %% Work on Results 
 load('D:\Behaviour\SleepWake\Re_Runs\Post_State_Space_Data\New\Results.mat')

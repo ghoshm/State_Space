@@ -66,8 +66,8 @@ N = size(X,2); % number of samples
 m = 1.4;
 
 % Optimize the swarm using 80% resampling rate and mahalanobis distance
-swarm = RCE(X, 6, 'distance','euclidean','fuzzifier',m, 'display','text', ...
-    'swarm',200, 'subsprob',0.03, 'maxiter',100,'resampling_rate',0.1,'calculate_labels', false);
+swarm = RCE(X, 15, 'distance','euclidean','fuzzifier',m, 'display','text', ...
+    'swarm',200, 'subsprob',0.03, 'maxiter',100,'resampling_rate',0.8,'calculate_labels', false);
 
 % input vectors using the Swarm
 [softlabels, crisplabels, numlabels] = swarm_cluster(X,swarm);
