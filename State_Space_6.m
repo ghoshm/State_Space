@@ -1,17 +1,20 @@
 % State_Space_6 
 
 load('D:\Behaviour\SleepWake\Re_Runs\Post_State_Space_Data\New\180111.mat', 'score');
-load('D:\Behaviour\SleepWake\Re_Runs\Post_State_Space_Data\New\180111.mat', 'fish_tags');
 load('D:\Behaviour\SleepWake\Re_Runs\Post_State_Space_Data\New\180111.mat', 'sleep_cells');
 
 % Remember to deal with NaN Values! 
+% X{1,1} = [normrnd(1,1,1000,2) ; normrnd(10,1,1000,2) ; normrnd(1,1,500,2)]; 
 
 % Settings
-reps = 1; % set the number of repetitions
-k_max = 1:20; % set values of k (clusters) to try
-options = statset('MaxIter',1000); % Hard coded number of iterations
+reps = 100; % set the number of repetitions
+k_vals = 2:20; % set values of k (clusters) to try
+a_size = 10000; % number of points to check  
+s_size = 1000; % number of points to sample 
+max_its = 1000; % Hard coded number of iterations
+GMM_reps = 5; % number of GMM Models to fit per iteration 
+method = 'average'; 
 knee_dim = 3; % pca dimensions to keep  
-
 X{1,1} = score(:,1:knee_dim); % active bouts 
 X{2,1} = sleep_cells(:,3); % inactive bouts 
 
@@ -20,39 +23,66 @@ score_values = unique(X{1,1}(:)')'; % Find unique scores
 score_zero = knnsearch(score_values,0); % Find the closest to zero
 rv = abs(score_values(score_zero)); % Regularization value
 
-% submit fish seperately 
-X{1,1} = X{1,1}(fish_tags{1,1} == 578,:); 
-X{2,1} = X{2,1}(fish_tags{2,1} == 578,:); 
-
-% Function 
-
-% allocate 
-GMModels = cell(2,k_max(end)); % models 
-idx = cell(2,k_max(end)); % cluster assignments 
-P = cell(2,k_max(end)); % posterior probabilities 
-BIC = zeros(2,k_max(end),'single'); % info criteria 
-
 % Loop
-for s = 1:2 % for active/inactive 
-    
-    tic 
-    for k = k_max
 
-        GMModels{s,k} = fitgmdist(X{s,1},k,...
-            'Options',options,'RegularizationValue',...
-            rv,'Replicates',5); % Fit K gaussians
-        
-        [idx{s,k},~,P{s,k}] = cluster(GMModels{s,k},X{s,1});
-        P{s,k} = max(P{s,k},[],2); % Keep only assigned probabilities (helps memory)
-        
-        % Information Criteria
-        BIC(s,k)= GMModels{s,k}.BIC; % Extract BIC
-        
-        disp(num2str(k)); 
-    end
-    toc
+
+% Cluster Colormap
+numComp = [10 6]; % Choose active & inactive numbers of clusters
+scrap = lbmap(sum(numComp),'RedBlue'); % Color Scheme
+cmap_cluster{1,1} = scrap(1:numComp(1),:); % generate a colormap for the clusters 
+cmap_cluster{2,1} = scrap(numComp(1)+1:end,:); % generate a colormap for the clusters 
+
+%% Clustering Figures 
+
+% Evidence Accumulation
+subplot('position',[0.0500    0.8178    0.9000    0.1322]);
+[~,~,perm] = dendrogram(ea_links,size(ea,1)); % dendrogram
+dendrogram(ea_links,size(ea,1),'colorthreshold',th);
+
+line(get(gca,'xlim'), [th th]);
+text(1,double(th),'maximum lifetime cut','verticalalignment','bottom');
+
+axis off;
+subplot('position',[0.0500    0.7894    0.9000    0.0184]);
+image(label2rgb(ea_idx(perm)'));
+axis off;
+
+subplot('position', [0.0500    0.0500    0.9000    0.7294]);
+imagesc(ea(perm,perm) );
+axis off
     
+%% Using Posterior Probabilities 
+
+tic
+idx_cts = [];
+for r = 1:reps % for each iteration
+    
+    clear sample k GMModels idx P;
+    
+    sample = datasample(X{s,1},s_size); % sample points
+    k = datasample(k_vals,1); % choose a value for k
+    
+    GMModels = fitgmdist(sample,k,...
+        'Options',options,'RegularizationValue',...
+        rv,'Replicates',5); % Fit k gaussians
+    
+    [idx,~,P] = cluster(GMModels,X{s,1}(sample_a(:,s),:)); % cluster the answer points
+    idx_cts = [idx_cts ; grpstats(X{s,1}(sample_a(:,s),:),idx,'mean')]; % answer centroids
+    
+    ea = ea + (P*P'); % add to the EA Matrix
+    
+    % Information Criteria
+    disp(num2str(r));
 end
+toc
+
+D = diag(diag(ea)); % diagonals
+ea = D^-0.5 * ea * D^-0.5; % rescale
+
+% construct the dendrogram
+ea_dist = 1-ea; % invert
+ea_dist(eye(size(ea))==1) = 0;
+Z = linkage(squareform(ea_dist),'average');
 
 %% RCE
 load('D:\Behaviour\SleepWake\Re_Runs\Post_State_Space_Data\New\180111.mat', 'score');
@@ -70,7 +100,7 @@ m = 1.4;
 
 % Optimize the swarm using 80% resampling rate and mahalanobis distance
 swarm = RCE(X, 6, 'distance','euclidean','fuzzifier',m, 'display','text', ...
-    'swarm',200, 'subsprob',0.03, 'maxiter',100,'resampling_rate',0.8,'calculate_labels', false);
+    'swarm',100, 'subsprob',0.03, 'maxiter',100,'resampling_rate',0.8,'calculate_labels', false);
 
 % input vectors using the Swarm
 [softlabels, crisplabels, numlabels] = swarm_cluster(X,swarm);
