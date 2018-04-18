@@ -2,55 +2,94 @@
 
 load('D:\Behaviour\SleepWake\Re_Runs\Post_State_Space_Data\New\180111.mat', 'score');
 load('D:\Behaviour\SleepWake\Re_Runs\Post_State_Space_Data\New\180111.mat', 'sleep_cells');
-
-% Remember to deal with NaN Values! 
-% X{1,1} = [normrnd(1,1,1000,2) ; normrnd(10,1,1000,2) ; normrnd(1,1,500,2)]; 
-
-% Settings
-reps = 100; % set the number of repetitions
-k_vals = 2:20; % set values of k (clusters) to try
-a_size = 10000; % number of points to check  
-s_size = 1000; % number of points to sample 
-max_its = 1000; % Hard coded number of iterations
-GMM_reps = 5; % number of GMM Models to fit per iteration 
-method = 'average'; 
-knee_dim = 3; % pca dimensions to keep  
+knee_dim = 2; % pca dimensions to keep  
+% Handling NaN Values 
+    % Note that there are so few NaN values that giving them "fake" values 
+    % for the clustering won't make a difference 
+sleep_cells_nan_track = isnan(sleep_cells(:,3)); % store nan locations  
+sleep_cells(sleep_cells_nan_track,3) = 1; % set NaN's to 1 (the mode ~= 18% of data) 
 X{1,1} = score(:,1:knee_dim); % active bouts 
 X{2,1} = sleep_cells(:,3); % inactive bouts 
 
+% Example Data 
+% X{1,1} = [normrnd(1,1,1000,2) ; normrnd(10,1,1000,2)]; 
+% X{2,1} = [normrnd(1,1,1000,1) ; normrnd(10,1,1000,1)]; 
+
+% Settings
+reps = 100; % set the number of repetitions
+k_vals = 2:40; % set values of k (clusters) to try
+a_size = 10000; % number of points to check  
+s_size = 100000; % number of points to sample 
+GMM_reps = 5; % number of GMM Models to fit per iteration 
+max_its = 1000; % Hard coded number of iterations
+method = 'average'; % linkage measure 
+nn = 9; % number of nearest neighbours
+
 % Calculate Regularization
-score_values = unique(X{1,1}(:)')'; % Find unique scores
+score_values = unique(X{1,1}(:)')'; % Find unique values
 score_zero = knnsearch(score_values,0); % Find the closest to zero
-rv = abs(score_values(score_zero)); % Regularization value
+rv = abs(score_values(score_zero)); % Regularization value for GMM 
 
 % Loop
-
+for s = 1:2 % for active & inactive
+    tic 
+    [ea{s,1}, idx{s,1}, idx_cts{s,1}, ~, ...
+        ea_links{s,1}, ea_idx{s,1}, ~, th(s,1), sample_a{s,1}] = ...
+        gmm_sample_ea(X{s,1},reps,k_vals,a_size,s_size,rv,GMM_reps,max_its,method,nn);
+    toc 
+end
 
 % Cluster Colormap
-numComp = [10 6]; % Choose active & inactive numbers of clusters
+numComp = [max(ea_idx{1,1}) max(ea_idx{2,1})]; % Choose active & inactive numbers of clusters
 scrap = lbmap(sum(numComp),'RedBlue'); % Color Scheme
 cmap_cluster{1,1} = scrap(1:numComp(1),:); % generate a colormap for the clusters 
-cmap_cluster{2,1} = scrap(numComp(1)+1:end,:); % generate a colormap for the clusters 
+cmap_cluster{2,1} = scrap((numComp(1)+1):end,:); % generate a colormap for the clusters 
+
+clear s score_values score_zero scrap 
 
 %% Clustering Figures 
 
 % Evidence Accumulation
-subplot('position',[0.0500    0.8178    0.9000    0.1322]);
-[~,~,perm] = dendrogram(ea_links,size(ea,1)); % dendrogram
-dendrogram(ea_links,size(ea,1),'colorthreshold',th);
-
-line(get(gca,'xlim'), [th th]);
-text(1,double(th),'maximum lifetime cut','verticalalignment','bottom');
-
-axis off;
-subplot('position',[0.0500    0.7894    0.9000    0.0184]);
-image(label2rgb(ea_idx(perm)'));
-axis off;
-
-subplot('position', [0.0500    0.0500    0.9000    0.7294]);
-imagesc(ea(perm,perm) );
-axis off
+for s = 1:2 % for active & inactive
+    figure; box off; set(gca, 'Layer','top'); set(gca,'Fontsize',32); % Format
+    set(gca,'FontName','Calibri');
     
+    % Dendrogram
+    subplot('position',[0.0500    0.8178    0.9000    0.1322]);
+    [H,~,perm] = dendrogram(ea_links{s,1},size(ea{s,1},1),'colorthreshold',th(s,1)); % dendrogram
+    lineColours = cell2mat(get(H,'Color'));
+    colourList = unique(lineColours,'rows');
+    
+    for c = 2:size(colourList,1) % for each colour
+        i = ismember(lineColours, colourList(c,:),'rows');
+        lineColours(i, :) = repmat(cmap_cluster{s,1}(c-1,:),sum(i),1);
+    end
+    for l = 1:size(H,1)
+        set(H(l), 'Color', lineColours(l,:));
+    end
+    axis off;
+    
+    line(get(gca,'xlim'), [th(s,1) th(s,1)],'LineStyle',':','LineWidth',1.5);
+    text(1,double(th(s,1)),'Maximum Lifetime Cut','verticalalignment','bottom',...
+        'FontName','Calibri','FontSize',16);
+    
+    % EA Matrix
+    subplot('position', [0.0500    0.0500    0.9000    (0.7294+0.0184)]);
+    imagesc(ea{s,1}(perm,perm) );
+    axis off
+    c = colorbar;
+    c.Label.String = 'E.A. Index';
+    c.Location = 'southoutside';
+    c.FontSize = 16;
+end
+
+clear s H perm lineColours colourList c i l 
+
+%% Centroids Scatter 
+figure; hold on; 
+scatter(X{1,1}(:,1),X{1,1}(:,2),'.k'); % scatter data 
+scatter(idx_cts{1,1}(:,1),idx_cts{1,1}(:,2),'+','r'); 
+
 %% Using Posterior Probabilities 
 
 tic

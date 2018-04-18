@@ -1,6 +1,6 @@
 function [ea, idx, idx_cts, ea_dist, ...
-    ea_links, ea_idx, lifetimes, th] = ...
-    gmm_sample_ea(X,reps,k_vals,a_size,s_size,rv,GMM_reps,max_its,method)
+    ea_links, ea_idx, lifetimes, th, sample_a] = ...
+    gmm_sample_ea(X,reps,k_vals,a_size,s_size,rv,GMM_reps,max_its,method,nn)
 
 % Setup
 options = statset('MaxIter',max_its); % Max number of GMM iterations
@@ -32,6 +32,7 @@ for r = 1:reps % for each iteration
 end
 
 % construct the dendrogram
+disp('Constructing dendrogram'); % report progress 
 ea = ea./reps; % scale (0-1)
 ea_dist = 1 - ea; % invert
 ea_dist(eye(size(ea_dist))==1) = 0; % remove diagonal values
@@ -41,13 +42,14 @@ ea_links = linkage(squareform(ea_dist),method); % compute linkage
 lifetimes = diff(ea_links(:,3)); % diff linkage distances
 [~, Ith] = max(lifetimes); % longest lifetime index
 
-th = max(ea_links(Ith,3) + lifetimes(Ith)*0.5);
+th = max(ea_links(Ith,3) + lifetimes(Ith)*0.5); % lifetime threshold 
 
 % apply the cut to the dendrogram
 ea_idx = cluster(ea_links,'cutoff',th,'criterion','distance');
 
 % Fit points to clusters 
-kn = knnsearch(X(sample_a(:,1),:),X,'K',9);
-idx = mode(reshape(ea_idx(kn(:)),size(kn)),2); 
+disp('Fitting data into clusters'); % report progress 
+kn = knnsearch(X(sample_a(:,1),:),X,'K',nn); % find nn nearest neighbours 
+idx = mode(reshape(ea_idx(kn(:)),size(kn)),2); % assign to mode neighbour cluster
 
 end
