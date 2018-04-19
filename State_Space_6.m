@@ -17,13 +17,13 @@ X{2,1} = sleep_cells(:,3); % inactive bouts
 
 % Settings
 reps = 100; % set the number of repetitions
-k_vals = 2:40; % set values of k (clusters) to try
+k_vals = 2:20; % set values of k (clusters) to try
 a_size = 10000; % number of points to check  
-s_size = 100000; % number of points to sample 
+s_vals = [100,1000]; % min & max points to sample (uniformly)
 GMM_reps = 5; % number of GMM Models to fit per iteration 
-max_its = 1000; % Hard coded number of iterations
+max_its = 1000; % number of GMM iterations (per repetition) 
 method = 'average'; % linkage measure 
-nn = 9; % number of nearest neighbours
+nn = 50; % number of nearest neighbours
 
 % Calculate Regularization
 score_values = unique(X{1,1}(:)')'; % Find unique values
@@ -34,8 +34,8 @@ rv = abs(score_values(score_zero)); % Regularization value for GMM
 for s = 1:2 % for active & inactive
     tic 
     [ea{s,1}, idx{s,1}, idx_cts{s,1}, ~, ...
-        ea_links{s,1}, ea_idx{s,1}, ~, th(s,1), sample_a{s,1}] = ...
-        gmm_sample_ea(X{s,1},reps,k_vals,a_size,s_size,rv,GMM_reps,max_its,method,nn);
+        ea_links{s,1}, ea_idx{s,1}, ~, th(s,1), sample_a{s,1},sample_a_n{s,1}] = ...
+        gmm_sample_ea(X{s,1},reps,k_vals,a_size,s_vals,rv,GMM_reps,max_its,method,nn);
     toc 
 end
 
