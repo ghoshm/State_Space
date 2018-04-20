@@ -11,15 +11,16 @@ sleep_cells(sleep_cells_nan_track,3) = 1; % set NaN's to 1 (the mode ~= 18% of d
 X{1,1} = score(:,1:knee_dim); % active bouts 
 X{2,1} = sleep_cells(:,3); % inactive bouts 
 
-% Example Data 
-% X{1,1} = [normrnd(1,1,1000,2) ; normrnd(10,1,1000,2)]; 
-% X{2,1} = [normrnd(1,1,1000,1) ; normrnd(10,1,1000,1)]; 
+% % Example Data 
+  X{1,1} = [normrnd(1,1,100000,2) ; normrnd(10,1,100000,2) ; ... 
+      normrnd(5,.5,100000,2)]; 
+  X{2,1} = [normrnd(1,1,100000,1) ; normrnd(10,1,100000,1) ; normrnd(1,1,100000,1)]; 
 
 % Settings
 reps = 100; % set the number of repetitions
 k_vals = 2:20; % set values of k (clusters) to try
-a_size = 10000; % number of points to check  
-s_vals = [100,1000]; % min & max points to sample (uniformly)
+a_size = 1000; % number of points to check  
+s_vals = [100,500]; % min & max points to sample (uniformly)
 GMM_reps = 5; % number of GMM Models to fit per iteration 
 max_its = 1000; % number of GMM iterations (per repetition) 
 method = 'average'; % linkage measure 
@@ -57,25 +58,26 @@ for s = 1:2 % for active & inactive
     % Dendrogram
     subplot('position',[0.0500    0.8178    0.9000    0.1322]);
     [H,~,perm] = dendrogram(ea_links{s,1},size(ea{s,1},1),'colorthreshold',th(s,1)); % dendrogram
-    lineColours = cell2mat(get(H,'Color'));
-    colourList = unique(lineColours,'rows');
+    lineColours = cell2mat(get(H,'Color')); % get line colours 
+    colourList = unique(lineColours,'rows'); % find unique line colours
     
-    for c = 2:size(colourList,1) % for each colour
-        i = ismember(lineColours, colourList(c,:),'rows');
-        lineColours(i, :) = repmat(cmap_cluster{s,1}(c-1,:),sum(i),1);
+    for c = 2:size(colourList,1) % for each colour (excluding black) 
+        i = ismember(lineColours, colourList(c,:),'rows'); % find lines of this color (logical) 
+        lineColours(i, :) = repmat(cmap_cluster{s,1}(c-1,:),sum(i),1); % assign new color  
     end
-    for l = 1:size(H,1)
-        set(H(l), 'Color', lineColours(l,:));
+    for l = 1:size(H,1) % for each line 
+        set(H(l), 'Color', lineColours(l,:)); % set new color 
     end
     axis off;
     
+    % Maximum lifetime threshold line 
     line(get(gca,'xlim'), [th(s,1) th(s,1)],'LineStyle',':','LineWidth',1.5);
     text(1,double(th(s,1)),'Maximum Lifetime Cut','verticalalignment','bottom',...
         'FontName','Calibri','FontSize',16);
     
     % EA Matrix
-    subplot('position', [0.0500    0.0500    0.9000    (0.7294+0.0184)]);
-    imagesc(ea{s,1}(perm,perm) );
+    subplot('position', [0.0500    0.0500    0.9000    0.7478]);
+    imagesc(ea{s,1}(perm,perm));
     axis off
     c = colorbar;
     c.Label.String = 'E.A. Index';
