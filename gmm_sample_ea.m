@@ -5,17 +5,18 @@ function [ea, idx, idx_cts, ea_dist, ...
 % Setup
 options = statset('MaxIter',max_its); % Max number of GMM iterations
 ea = zeros(a_size,a_size,'single'); % allocate ea matrix
-[~,sample_a(:,1)] = datasample(X,a_size); % sample answers
+[~,sample_a(:,1)] = datasample(X,a_size,'Replace',false); % sample answers (indicies in X) 
 idx_cts = []; % allocate
 s_sizes(:,1) = datasample(s_vals(1):s_vals(2),reps); % uniform sampling of size samples  
+ks(:,1) = datasample(k_vals,reps); % uniform sampling of k values  
 
 % Clustering & Evidence Accumulation 
 for r = 1:reps % for each iteration
     
     clear sample k GMModels idx;
     
-    sample = datasample(X,s_sizes(r,1)); % sample points
-    k = datasample(k_vals,1); % choose a value for k
+    sample = datasample(X,s_sizes(r,1),'Replace',false); % sample points
+    k = ks(r,1); % choose a value for k
     
     GMModels = fitgmdist(sample,k,...
         'Options',options,'RegularizationValue',...
@@ -36,7 +37,7 @@ end
 disp('Constructing dendrogram'); % report progress 
 ea = ea./reps; % scale (0-1)
 ea_dist = 1 - ea; % invert
-ea_dist(eye(size(ea_dist))==1) = 0; % remove diagonal values
+ea_dist(eye(size(ea_dist))==1) = 0; % make sure diagonal values are zero 
 ea_links = linkage(squareform(ea_dist),method); % compute linkage
 
 % compute the maximum lifetime cut
@@ -54,7 +55,8 @@ for c = 1:max(ea_idx) % for each cluster
     sample_a_n = [sample_a_n ; ...
         datasample(sample_a(ea_idx == c,1),min(histcounts(ea_idx)),...
         'Replace',false)];
-    % sample the size of the smallest cluster, without replacement 
+    % sample indicies refering to X,
+    % sample as many points as the smallest cluster 
 end 
 sample_a_n(:,2) = reshape(repmat(1:max(ea_idx),min(histcounts(ea_idx)),1),[],1); 
 ea_idx_n = sample_a_n(:,2); % normalised cluster indicies   
