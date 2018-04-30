@@ -2,6 +2,19 @@ function [ea, idx, idx_cts, ea_dist, ...
     ea_links, ea_idx, lifetimes, th, sample_a,sample_a_n] = ...
     gmm_sample_ea(X,reps,k_vals,a_size,s_vals,rv,GMM_reps,max_its,method,nn)
 
+%% Info 
+% Details 
+
+% Dependencies 
+  % Statistics and Machine Learning Toolbox
+
+% Inputs 
+
+% Outputs 
+
+
+%% Function 
+
 % Setup
 options = statset('MaxIter',max_its); % Max number of GMM iterations
 ea = zeros(a_size,a_size,'single'); % allocate ea matrix
@@ -53,12 +66,13 @@ ea_idx = cluster(ea_links,'cutoff',th,'criterion','distance');
 sample_a_n = []; % allocate 
 for c = 1:max(ea_idx) % for each cluster 
     sample_a_n = [sample_a_n ; ...
-        datasample(sample_a(ea_idx == c,1),min(histcounts(ea_idx)),...
-        'Replace',false)];
+        datasample(sample_a(ea_idx == c,1),min(histcounts(ea_idx,...
+        'binmethod','integer')),'Replace',false)];
     % sample indicies refering to X,
     % sample as many points as the smallest cluster 
 end 
-sample_a_n(:,2) = reshape(repmat(1:max(ea_idx),min(histcounts(ea_idx)),1),[],1); 
+sample_a_n(:,2) = reshape(repmat(1:max(ea_idx),min(histcounts(ea_idx,...
+    'binmethod','integer')),1),[],1); 
 ea_idx_n = sample_a_n(:,2); % normalised cluster indicies   
 
 % Fit points to clusters
