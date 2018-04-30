@@ -11,7 +11,7 @@ sleep_cells(sleep_cells_nan_track,3) = 1; % set NaN's to 1 (the mode ~= 18% of d
 X{1,1} = score(:,1:knee_dim); % active bouts 
 X{2,1} = sleep_cells(:,3); % inactive bouts 
 
-% % Example Data 
+% Example Data 
   X{1,1} = [normrnd(1,1,100000,2) ; normrnd(10,1,100000,2) ; ... 
       normrnd(5,.5,100000,2)]; 
   X{2,1} = [normrnd(1,1,100000,1) ; normrnd(10,1,100000,1) ; normrnd(1,1,100000,1)]; 
@@ -19,8 +19,8 @@ X{2,1} = sleep_cells(:,3); % inactive bouts
 % Settings
 reps = 100; % set the number of repetitions
 k_vals = 2:20; % set values of k (clusters) to try
-a_size = 1000; % number of points to check  
-s_vals = [100,500]; % min & max points to sample (uniformly)
+a_size = 20000; % number of points to check  
+s_vals = [10000,100000]; % min & max points to sample (uniformly)
 GMM_reps = 5; % number of GMM Models to fit per iteration 
 max_its = 1000; % number of GMM iterations (per repetition) 
 method = 'average'; % linkage measure 
