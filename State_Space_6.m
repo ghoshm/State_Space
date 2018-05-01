@@ -13,7 +13,6 @@ X{2,1} = sleep_cells(:,3); % inactive bouts
 
 % Example Data 
   X{1,1} = [normrnd(1,1,100000,2) ; normrnd(10,1,100000,2) ; ... 
-      normrnd(5,.5,100000,2)]; 
   X{2,1} = [normrnd(1,1,100000,1) ; normrnd(10,1,100000,1) ; normrnd(1,1,100000,1)]; 
 
 % Settings
