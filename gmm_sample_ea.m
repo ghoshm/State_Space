@@ -3,7 +3,8 @@ function [ea, idx, idx_cts, ea_dist, ...
     gmm_sample_ea(X,reps,k_vals,a_size,s_vals,rv,GMM_reps,max_its,method,nn)
 
 %% Info 
-
+    % marcus.ghosh.11@ucl.ac.uk 
+    
 % Details 
     % Clustering using Gaussian Mixture Models, as both K, 
     % and the data the model is fit to is varied over multiple iterations. 

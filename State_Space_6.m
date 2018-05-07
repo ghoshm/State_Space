@@ -11,9 +11,9 @@ sleep_cells(sleep_cells_nan_track,3) = 1; % set NaN's to 1 (the mode ~= 18% of d
 X{1,1} = score(:,1:knee_dim); % active bouts 
 X{2,1} = sleep_cells(:,3); % inactive bouts 
 
-% Example Data 
-  X{1,1} = [normrnd(1,1,100000,2) ; normrnd(10,1,100000,2) ; ... 
-  X{2,1} = [normrnd(1,1,100000,1) ; normrnd(10,1,100000,1) ; normrnd(1,1,100000,1)]; 
+% % Example Data 
+%   X{1,1} = [normrnd(1,1,100000,2) ; normrnd(10,1,100000,2) ; ... 
+%   X{2,1} = [normrnd(1,1,100000,1) ; normrnd(10,1,100000,1) ; normrnd(1,1,100000,1)]; 
 
 % Settings
 reps = 100; % set the number of repetitions
@@ -44,6 +44,7 @@ numComp = [max(ea_idx{1,1}) max(ea_idx{2,1})]; % Choose active & inactive number
 scrap = lbmap(sum(numComp),'RedBlue'); % Color Scheme
 cmap_cluster{1,1} = scrap(1:numComp(1),:); % generate a colormap for the clusters 
 cmap_cluster{2,1} = scrap((numComp(1)+1):end,:); % generate a colormap for the clusters 
+strings{1,1} = 'Active'; strings{2,1} = 'Inactive'; 
 
 clear s score_values score_zero scrap 
 
