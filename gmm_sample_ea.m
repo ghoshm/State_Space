@@ -15,7 +15,7 @@ function [ea, idx, idx_cts, ea_dist, ...
     % are normalised for size and all data is assigned using KNN. 
     
     % This process is suited to datasets where there are too many points 
-    % to cluster in a single pass 
+    % to practically cluster while varying K  
     
     % Based upon (Fred & Jain 2005 - 10.1109/ICPR.2002.1047450) 
     
@@ -127,14 +127,15 @@ for r = 1:reps % for each iteration
     
     clear sample k GMModels idx;
     
-    sample = datasample(X,s_sizes(r,1),'Replace',false); % sample points
-    k = ks(r,1); % choose a value for k
+    sample = datasample(X,s_sizes(r,1),'Replace',false); % sample s points
+    k = ks(r,1); % take a value for k
     
     GMModels = fitgmdist(sample,k,...
         'Options',options,'RegularizationValue',...
         rv,'Replicates',GMM_reps); % Fit k gaussians to sample, GMM_reps times
     
-    idx = cluster(GMModels,X(sample_a(:,1),:)); % cluster the answer points
+    idx = cluster(GMModels,X(sample_a(:,1),:)); % cluster the probe points, 
+        % according to their maximum posterior probability
     
     idx_cts = [idx_cts ; grpstats(X(sample_a(:,1),:),idx,'mean')]; % answer centroids
     
